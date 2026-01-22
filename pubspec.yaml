@@ -1,0 +1,37 @@
+name: komunidad
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  google_fonts: ^6.2.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo.png
+    - assets/images/koms.png
+    - assets/images/gagle.png
+    - assets/images/report.png
+    - assets/images/report.png
+    - assets/images/service.png
+    - assets/images/chat.png
+    - assets/images/guide.png
+    - assets/images/hotline.png
+    - assets/images/lostfound.png
+    - assets/images/feedback.png
+    - assets/images/history.png
+    - assets/images/community_banner.png
