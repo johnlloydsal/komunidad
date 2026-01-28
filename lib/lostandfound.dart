@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-// 🔹 Model Class
+// ðŸ”¹ Model Class
 class LostItem {
   final String item;
   final String notes;
@@ -28,7 +28,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> with TickerProvider
   late TabController _tabController;
   int selectedTab = 0; // 0 = Lost, 1 = Found
 
-  // 🔹 Lists for Lost & Found items
+  // ðŸ”¹ Lists for Lost & Found items
   List<LostItem> lostItems = [];
   List<LostItem> foundItems = [];
 
@@ -97,9 +97,9 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> with TickerProvider
       body: TabBarView(
         controller: _tabController,
         children: [
-          // 🔹 Lost Items Tab
+          // ðŸ”¹ Lost Items Tab
           _buildItemsList(lostItems, isLost: true),
-          // 🔹 Found Items Tab
+          // ðŸ”¹ Found Items Tab
           _buildItemsList(foundItems, isLost: false),
         ],
       ),
@@ -400,4 +400,4 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
     );
   }
 }
-e11fewfw
+

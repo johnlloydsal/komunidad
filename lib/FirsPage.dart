@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
+import 'register.dart';
 
 class FirstPage extends StatelessWidget {
   const FirstPage({super.key});
@@ -49,18 +50,18 @@ class FirstPage extends StatelessWidget {
 
               // 🔹 Welcome Text
               const Text(
-                "Welcome",
+                "Get Started",
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
               ),
               const SizedBox(height: 8),
               const Text(
-                "Let's get started",
+                "Create an account or login",
                 style: TextStyle(color: Colors.grey, fontSize: 14),
               ),
 
               const SizedBox(height: 60),
 
-              // 🔹 Get Started Button
+              // 🔹 Register Button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 child: SizedBox(
@@ -74,17 +75,51 @@ class FirstPage extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
+                      // Navigate to Register page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RegisterPage()),
+                      );
+                    },
+                    child: const Text(
+                      "Register",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 🔹 Login Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF4A00E0), width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const LoginPage()),
                       );
                     },
                     child: const Text(
-                      "Get Started",
+                      "Login",
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Color(0xFF4A00E0),
                       ),
                     ),
                   ),

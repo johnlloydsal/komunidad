@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Komunidad',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true),
-      home: const LandingPage(),
+      home: const FirstPage(),
     );
   }
 }

@@ -6,8 +6,50 @@ import 'report_issue.dart';
 import 'service_request.dart';
 import 'community_news.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _selectedIndex = 0;
+
+  void _onBottomNavTap(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // Navigate based on selected tab
+    if (index == 0) {
+      // Home - stay on current page
+    } else if (index == 1) {
+      // Community News
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CommunityNewsPage(),
+        ),
+      );
+    } else if (index == 2) {
+      // Filter/Announcements
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CommunityNewsPage(),
+        ),
+      );
+    } else if (index == 3) {
+      // Profile
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ProfilePage(),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,42 +101,6 @@ class HomePage extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Profile Circle
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ProfilePage(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF4A00E0), Color(0xFF2575FC)],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 28,
-                        ),
                       ),
                     ),
                   ],
@@ -200,70 +206,17 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // 🔹 Community News
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CommunityNewsPage(),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.grey[100],
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Discover Communities News",
-                        style:
-                            TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const Text(
-                        "Find latest news and announcements in the communities",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ✅ Inserted PNG Banner
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          "assets/images/community_banner.png",
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Example News
-                      const _NewsCard(
-                        category: "COMMUNITY",
-                        title:
-                            "BARANGAY CLEAN-UP DRIVE TOGETHER WITH ILOILO CITY GOVERNMENT",
-                      ),
-                      const _NewsCard(
-                        category: "COMMUNITY",
-                        title:
-                            "SANGGUNIANG KABATAAN LEAGUE 2025: LINGGO NG KABATAAN",
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
         backgroundColor: Colors.white,
         unselectedItemColor: Colors.grey,
         selectedItemColor: const Color(0xFF4A00E0),
         type: BottomNavigationBarType.fixed,
+        onTap: _onBottomNavTap,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
           BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: ''),
