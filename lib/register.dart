@@ -1,6 +1,8 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'login.dart';
+import 'services/user_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -10,13 +12,15 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  final UserService _userService = UserService();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
   bool acceptedTerms = false;
   bool isLoading = false;
@@ -76,7 +80,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: "Email Address",
                     filled: true,
                     fillColor: Colors.grey[50],
-                    prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: Colors.grey,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -92,7 +99,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: "Username",
                     filled: true,
                     fillColor: Colors.grey[50],
-                    prefixIcon: const Icon(Icons.person_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.person_outlined,
+                      color: Colors.grey,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -108,7 +118,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: "First Name",
                     filled: true,
                     fillColor: Colors.grey[50],
-                    prefixIcon: const Icon(Icons.person_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.person_outlined,
+                      color: Colors.grey,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -124,7 +137,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: "Last Name",
                     filled: true,
                     fillColor: Colors.grey[50],
-                    prefixIcon: const Icon(Icons.person_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.person_outlined,
+                      color: Colors.grey,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -140,7 +156,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: "Phone Number",
                     filled: true,
                     fillColor: Colors.grey[50],
-                    prefixIcon: const Icon(Icons.phone_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
+                      color: Colors.grey,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -157,7 +176,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: "Password",
                     filled: true,
                     fillColor: Colors.grey[50],
-                    prefixIcon: const Icon(Icons.lock_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.lock_outlined,
+                      color: Colors.grey,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -174,7 +196,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: "Confirm Password",
                     filled: true,
                     fillColor: Colors.grey[50],
-                    prefixIcon: const Icon(Icons.lock_outlined, color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.lock_outlined,
+                      color: Colors.grey,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -198,10 +223,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     const Expanded(
                       child: Text(
                         "I accept the Terms and Policy",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ),
                   ],
@@ -222,68 +244,180 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     onPressed: isLoading || !acceptedTerms
                         ? null
-                        : () {
+                        : () async {
+                            // For web - also use window.console.log
+                            print('🔴 REGISTER BUTTON PRESSED!');
                             String email = emailController.text.trim();
-                            String username = usernameController.text.trim();
                             String firstName = firstNameController.text.trim();
                             String lastName = lastNameController.text.trim();
                             String phone = phoneController.text.trim();
                             String password = passwordController.text.trim();
-                            String confirmPassword =
-                                confirmPasswordController.text.trim();
+                            String confirmPassword = confirmPasswordController
+                                .text
+                                .trim();
 
-                            if (email.isNotEmpty &&
-                                username.isNotEmpty &&
-                                firstName.isNotEmpty &&
-                                lastName.isNotEmpty &&
-                                phone.isNotEmpty &&
-                                password.isNotEmpty &&
-                                confirmPassword.isNotEmpty) {
-                              if (password == confirmPassword) {
-                                setState(() {
-                                  isLoading = true;
-                                });
+                            print('🔴 Email: $email');
+                            print('🔴 Name: $firstName $lastName');
+                            print('🔴 Phone: $phone');
+                            print('🔴 Password length: ${password.length}');
+                            print('🔴 Terms accepted: $acceptedTerms');
 
-                                // Simulate API delay
-                                Future.delayed(const Duration(seconds: 1), () {
-                                  setState(() {
-                                    isLoading = false;
-                                  });
-
-                                  // ✅ Show success SnackBar
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Registration Successful 🎉"),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-
-                                  // ✅ Navigate to login after delay
-                                  Future.delayed(
-                                      const Duration(milliseconds: 800), () {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const LoginPage(),
-                                      ),
-                                    );
-                                  });
-                                });
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Passwords do not match!"),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              }
-                            } else {
+                            // Validation
+                            if (email.isEmpty ||
+                                firstName.isEmpty ||
+                                lastName.isEmpty ||
+                                phone.isEmpty ||
+                                password.isEmpty ||
+                                confirmPassword.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text("Please fill all fields!"),
+                                  backgroundColor: Colors.red,
                                   duration: Duration(seconds: 2),
                                 ),
                               );
+                              return;
+                            }
+
+                            if (!email.contains('@')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Please enter a valid email"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (password != confirmPassword) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Passwords do not match!"),
+                                  backgroundColor: Colors.red,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (password.length < 6) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Password must be at least 6 characters",
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            setState(() {
+                              isLoading = true;
+                            });
+
+                            try {
+                              // Create account with Firebase (without Firestore yet)
+                              print('🔵 Starting registration for: $email');
+                              final userCredential = await FirebaseAuth.instance
+                                  .createUserWithEmailAndPassword(
+                                    email: email,
+                                    password: password,
+                                  );
+
+                              if (userCredential.user != null) {
+                                // Update display name
+                                String displayName = '$firstName $lastName';
+                                print('🔵 Updating display name: $displayName');
+                                await userCredential.user!.updateDisplayName(
+                                  displayName,
+                                );
+                                await userCredential.user!.reload();
+
+                                // Save ALL user data to Firestore in one call
+                                print('🔵 Saving to Firestore...');
+                                await _userService.updateUserProfile(
+                                  uid: userCredential.user!.uid,
+                                  displayName: displayName,
+                                  phoneNumber: phone,
+                                );
+
+                                // Also ensure basic profile exists
+                                await _userService.createUserProfile(
+                                  uid: userCredential.user!.uid,
+                                  email: email,
+                                  displayName: displayName,
+                                );
+                                print('✅ Firestore save complete!');
+
+                                if (!mounted) return;
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "Registration Successful! 🎉",
+                                    ),
+                                    backgroundColor: Colors.green,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+
+                                // Navigate to login
+                                await Future.delayed(
+                                  const Duration(milliseconds: 800),
+                                );
+                                if (!mounted) return;
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const LoginPage(),
+                                  ),
+                                );
+                              }
+                            } on FirebaseAuthException catch (e) {
+                              print(
+                                '❌ Firebase Auth Error: ${e.code} - ${e.message}',
+                              );
+                              if (!mounted) return;
+
+                              String errorMessage = 'Registration failed';
+                              if (e.code == 'weak-password') {
+                                errorMessage =
+                                    'Password should be at least 6 characters';
+                              } else if (e.code == 'email-already-in-use') {
+                                errorMessage =
+                                    'Email already in use. Please login instead.';
+                              } else if (e.code == 'invalid-email') {
+                                errorMessage = 'Invalid email address';
+                              } else {
+                                errorMessage =
+                                    e.message ?? 'Registration failed';
+                              }
+
+                              print('❌ Showing error: $errorMessage');
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(errorMessage),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            } catch (e) {
+                              print('❌ General Error: $e');
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  isLoading = false;
+                                });
+                              }
                             }
                           },
                     child: isLoading

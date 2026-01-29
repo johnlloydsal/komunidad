@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'firspage.dart';
 import 'login.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -33,10 +37,7 @@ class LandingPage extends StatelessWidget {
             height: MediaQuery.of(context).size.height * 0.65,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Color(0xFF1C10C5),
-                  Color(0xFF2575FC),
-                ],
+                colors: [Color(0xFF1C10C5), Color(0xFF2575FC)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -54,10 +55,7 @@ class LandingPage extends StatelessWidget {
                   child: Text(
                     "Connecting Citizens, Empowering Communities",
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                 ),
               ],
@@ -72,19 +70,14 @@ class LandingPage extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(45),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(45)),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
                     "Sign Up",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   const Text(
@@ -102,10 +95,7 @@ class LandingPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    icon: Image.asset(
-                      "assets/images/gagle.png",
-                      height: 22,
-                    ),
+                    icon: Image.asset("assets/images/gagle.png", height: 22),
                     label: const Text("Continue with Google"),
                     onPressed: () {
                       Navigator.push(

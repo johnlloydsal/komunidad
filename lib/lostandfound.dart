@@ -24,7 +24,8 @@ class LostAndFoundPage extends StatefulWidget {
   State<LostAndFoundPage> createState() => _LostAndFoundPageState();
 }
 
-class _LostAndFoundPageState extends State<LostAndFoundPage> with TickerProviderStateMixin {
+class _LostAndFoundPageState extends State<LostAndFoundPage>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   int selectedTab = 0; // 0 = Lost, 1 = Found
 
@@ -46,8 +47,6 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final items = selectedTab == 0 ? lostItems : foundItems;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -109,9 +108,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> with TickerProvider
           final newItem = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddLostFoundPage(
-                isLost: selectedTab == 0,
-              ),
+              builder: (context) => AddLostFoundPage(isLost: selectedTab == 0),
             ),
           );
 
@@ -222,7 +219,10 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> with TickerProvider
                         Expanded(
                           child: Text(
                             item.name,
-                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
                       ],
@@ -235,7 +235,10 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> with TickerProvider
                         Expanded(
                           child: Text(
                             item.phone,
-                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
                       ],
@@ -306,8 +309,7 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                validator: (value) =>
-                    value!.isEmpty ? "Enter item name" : null,
+                validator: (value) => value!.isEmpty ? "Enter item name" : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -378,7 +380,7 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
                         item: _itemController.text,
                         notes: _notesController.text,
                         name: _nameController.text,
-                        email: _emailController.text,   
+                        email: _emailController.text,
                         phone: _phoneController.text,
                       ),
                     );
@@ -392,7 +394,7 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -400,4 +402,3 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
     );
   }
 }
-

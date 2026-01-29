@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'hotline.dart'; 
-import 'lostandfound.dart'; 
+import 'hotline.dart';
+import 'lostandfound.dart';
 import 'profile.dart';
 import 'report_issue.dart';
 import 'service_request.dart';
@@ -28,25 +28,19 @@ class _HomePageState extends State<HomePage> {
       // Community News
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const CommunityNewsPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const CommunityNewsPage()),
       );
     } else if (index == 2) {
       // Filter/Announcements
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const CommunityNewsPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const CommunityNewsPage()),
       );
     } else if (index == 3) {
       // Profile
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const ProfilePage(),
-        ),
+        MaterialPageRoute(builder: (context) => const ProfilePage()),
       );
     }
   }
@@ -115,11 +109,13 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     const Text(
                       "What would you like to do?",
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Report Issue
                     _buildServiceCard(
                       context,
@@ -134,7 +130,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    
+
                     // Service Request
                     _buildServiceCard(
                       context,
@@ -149,7 +145,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    
+
                     // Lost and Found
                     _buildServiceCard(
                       context,
@@ -164,7 +160,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    
+
                     // Emergency Hotline
                     _buildServiceCard(
                       context,
@@ -179,7 +175,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    
+
                     // Barangay Information
                     _buildServiceCard(
                       context,
@@ -187,11 +183,13 @@ class _HomePageState extends State<HomePage> {
                       title: "Barangay Information",
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Barangay Information opened")),
+                          const SnackBar(
+                            content: Text("Barangay Information opened"),
+                          ),
                         );
                       },
                     ),
-                    
+
                     // View Report & Service Request
                     _buildServiceCard(
                       context,
@@ -199,7 +197,11 @@ class _HomePageState extends State<HomePage> {
                       title: "View Report & Service Request",
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("View Report & Service Request opened")),
+                          const SnackBar(
+                            content: Text(
+                              "View Report & Service Request opened",
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -259,93 +261,18 @@ Widget _buildServiceCard(
               color: const Color(0xFF4A00E0).withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: const Color(0xFF4A00E0),
-              size: 28,
-            ),
+            child: Icon(icon, color: const Color(0xFF4A00E0), size: 28),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
-          const Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         ],
       ),
     ),
   );
-}
-
-// 🔹 Service Icon Widget
-class _ServiceIcon extends StatelessWidget {
-  final String iconPath;
-  final String label;
-
-  const _ServiceIcon({required this.iconPath, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CircleAvatar(
-          backgroundColor: Colors.blue[100],
-          child: Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: Image.asset(iconPath, height: 27, width: 24),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          softWrap: true,
-        ),
-      ],
-    );
-  }
-}
-
-// 🔹 News Card Widget
-class _NewsCard extends StatelessWidget {
-  final String category;
-  final String title;
-
-  const _NewsCard({required this.category, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(category,
-                style: const TextStyle(
-                    color: Color.fromARGB(255, 63, 37, 210), fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
 }

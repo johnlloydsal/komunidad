@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "888930015901",
+    "project_id": "komunidad-36f9b",
+    "storage_bucket": "komunidad-36f9b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888930015901:android:972962a27692c0ee951274",
+        "android_client_info": {
+          "package_name": "com.example.komunidadapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "888930015901-mcave30gor9qeg98tda2sm58rvop5tsg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFSU3BCjyU3Ox3IJqRMEySQXBSRhOerlM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "888930015901-mcave30gor9qeg98tda2sm58rvop5tsg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
