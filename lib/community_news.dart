@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'homepage.dart';
+import 'profile.dart';
 
 class CommunityNewsPage extends StatefulWidget {
   const CommunityNewsPage({super.key});
@@ -7,8 +9,30 @@ class CommunityNewsPage extends StatefulWidget {
   State<CommunityNewsPage> createState() => _CommunityNewsPageState();
 }
 
-class _CommunityNewsPageState extends State<CommunityNewsPage> with TickerProviderStateMixin {
+class _CommunityNewsPageState extends State<CommunityNewsPage>
+    with TickerProviderStateMixin {
   late TabController _tabController;
+  int _selectedIndex = 1; // Community News tab is selected
+
+  void _onBottomNavTap(int index) {
+    if (index == _selectedIndex) return;
+
+    Widget destination;
+    if (index == 0) {
+      destination = const HomePage();
+    } else if (index == 1 || index == 2) {
+      return; // Already on community news
+    } else if (index == 3) {
+      destination = const ProfilePage();
+    } else {
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => destination),
+    );
+  }
 
   final List<NewsItem> allNews = [
     NewsItem(
@@ -91,10 +115,28 @@ class _CommunityNewsPageState extends State<CommunityNewsPage> with TickerProvid
         controller: _tabController,
         children: [
           _buildNewsList(allNews),
-          _buildNewsList(allNews.where((item) => item.category == "Barangay").toList()),
+          _buildNewsList(
+            allNews.where((item) => item.category == "Barangay").toList(),
+          ),
           _buildNewsList([]),
-          _buildNewsList(allNews.where((item) => item.category == "Advisory").toList()),
+          _buildNewsList(
+            allNews.where((item) => item.category == "Advisory").toList(),
+          ),
           _buildNewsList([]),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        backgroundColor: Colors.white,
+        unselectedItemColor: Colors.grey,
+        selectedItemColor: const Color(0xFF4A00E0),
+        type: BottomNavigationBarType.fixed,
+        onTap: _onBottomNavTap,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.filter_list), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: ''),
         ],
       ),
     );

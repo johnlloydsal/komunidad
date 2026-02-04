@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'login.dart';
+import 'FirsPage.dart';
 import 'homepage.dart';
 
 class AuthWrapper extends StatelessWidget {
@@ -18,13 +18,18 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
+        // Debug: Print current auth state
+        print('🔍 Auth State: hasData=${snapshot.hasData}, user=${snapshot.data?.email}');
+
         // If user is logged in, show HomePage
         if (snapshot.hasData && snapshot.data != null) {
+          print('✅ User logged in, showing HomePage');
           return const HomePage();
         }
 
-        // If not logged in, show LoginPage
-        return const LoginPage();
+        // If not logged in, show FirstPage (landing page)
+        print('❌ No user, showing FirstPage');
+        return const FirstPage();
       },
     );
   }

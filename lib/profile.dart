@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
+import 'homepage.dart';
+import 'community_news.dart';
 import 'services/auth_service.dart';
 import 'services/user_service.dart';
 
@@ -16,6 +18,27 @@ class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
   User? currentUser;
+  int _selectedIndex = 3; // Profile tab is selected
+
+  void _onBottomNavTap(int index) {
+    if (index == _selectedIndex) return;
+
+    Widget destination;
+    if (index == 0) {
+      destination = const HomePage();
+    } else if (index == 1 || index == 2) {
+      destination = const CommunityNewsPage();
+    } else if (index == 3) {
+      return; // Already on profile
+    } else {
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => destination),
+    );
+  }
 
   @override
   void initState() {
@@ -23,23 +46,23 @@ class _ProfilePageState extends State<ProfilePage> {
     currentUser = _authService.currentUser;
     // Ensure user data exists in Firestore
     if (currentUser != null) {
-      _userService.createUserProfile(
-        uid: currentUser!.uid,
-        email: currentUser!.email!,
-        displayName: currentUser!.displayName,
-        photoUrl: currentUser!.photoURL,
-      ).catchError((e) {
-        print('Error ensuring user profile: $e');
-      });
+      _userService
+          .createUserProfile(
+            uid: currentUser!.uid,
+            email: currentUser!.email!,
+            displayName: currentUser!.displayName,
+            photoUrl: currentUser!.photoURL,
+          )
+          .catchError((e) {
+            print('Error ensuring user profile: $e');
+          });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (currentUser == null) {
-      return const Scaffold(
-        body: Center(child: Text('Not logged in')),
-      );
+      return const Scaffold(body: Center(child: Text('Not logged in')));
     }
 
     return StreamBuilder<DocumentSnapshot>(
@@ -56,7 +79,8 @@ class _ProfilePageState extends State<ProfilePage> {
           userData = snapshot.data!.data() as Map<String, dynamic>?;
         }
 
-        String displayName = userData?['displayName'] ??
+        String displayName =
+            userData?['displayName'] ??
             currentUser?.displayName ??
             currentUser?.email?.split('@')[0] ??
             'User';
@@ -99,11 +123,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       CircleAvatar(
                         radius: 55,
                         backgroundColor: const Color(0xFF4A00E0),
-                        backgroundImage:
-                            photoUrl != null ? NetworkImage(photoUrl) : null,
+                        backgroundImage: photoUrl != null
+                            ? NetworkImage(photoUrl)
+                            : null,
                         child: photoUrl == null
-                            ? const Icon(Icons.person,
-                                size: 60, color: Colors.white)
+                            ? const Icon(
+                                Icons.person,
+                                size: 60,
+                                color: Colors.white,
+                              )
                             : null,
                       ),
                       const SizedBox(height: 16),
@@ -185,7 +213,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text("Terms and Conditions opened")),
+                        content: Text("Terms and Conditions opened"),
+                      ),
                     );
                   },
                 ),
@@ -213,54 +242,71 @@ class _ProfilePageState extends State<ProfilePage> {
                               Navigator.pushAndRemoveUntil(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
+                                  builder: (context) => const LoginPage(),
+                                ),
                                 (route) => false,
                               );
                             },
-                            child: const Text("Logout",
-                                style: TextStyle(color: Colors.red)),
+                            child: const Text(
+                              "Logout",
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ),
                         ],
                       ),
                     );
                   },
                   child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.logout, color: Colors.white),
-                    SizedBox(width: 10),
-                    Text(
-                      "Logout",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.logout, color: Colors.white),
+                        SizedBox(width: 10),
+                        Text(
+                          "Logout",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            backgroundColor: Colors.white,
+            unselectedItemColor: Colors.grey,
+            selectedItemColor: const Color(0xFF4A00E0),
+            type: BottomNavigationBarType.fixed,
+            onTap: _onBottomNavTap,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.filter_list), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.person), label: ''),
+            ],
+          ),
+        );
       },
     );
   }
@@ -278,19 +324,24 @@ class _ProfilePageState extends State<ProfilePage> {
       'September',
       'October',
       'November',
-      'December'
+      'December',
     ];
     return 'Member since ${months[date.month - 1]} ${date.year}';
   }
 
   void _showEditAccountDialog(
-      BuildContext context, Map<String, dynamic>? userData) {
+    BuildContext context,
+    Map<String, dynamic>? userData,
+  ) {
     final nameController = TextEditingController(
-        text: userData?['displayName'] ?? currentUser?.displayName ?? '');
-    final phoneController =
-        TextEditingController(text: userData?['phoneNumber'] ?? '');
-    final addressController =
-        TextEditingController(text: userData?['address'] ?? '');
+      text: userData?['displayName'] ?? currentUser?.displayName ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: userData?['phoneNumber'] ?? '',
+    );
+    final addressController = TextEditingController(
+      text: userData?['address'] ?? '',
+    );
 
     showDialog(
       context: context,
@@ -341,7 +392,9 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: () async {
               try {
                 // Update Firebase Auth display name
-                await currentUser?.updateDisplayName(nameController.text.trim());
+                await currentUser?.updateDisplayName(
+                  nameController.text.trim(),
+                );
                 await currentUser?.reload();
 
                 // Update Firestore
@@ -428,7 +481,8 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           TextButton(
             onPressed: () async {
-              if (newPasswordController.text != confirmPasswordController.text) {
+              if (newPasswordController.text !=
+                  confirmPasswordController.text) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text("Passwords do not match"),
@@ -502,63 +556,53 @@ class _ProfilePageState extends State<ProfilePage> {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF4A00E0).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Icon(
-              icon,
-              color: const Color(0xFF4A00E0),
-              size: 24,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A00E0).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: const Color(0xFF4A00E0), size: 24),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Colors.grey,
-          ),
-        ],
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

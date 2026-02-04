@@ -1,21 +1,6 @@
-﻿import 'package:flutter/material.dart';
-
-// ðŸ”¹ Model Class
-class LostItem {
-  final String item;
-  final String notes;
-  final String name;
-  final String email;
-  final String phone;
-
-  LostItem({
-    required this.item,
-    required this.notes,
-    required this.name,
-    required this.email,
-    required this.phone,
-  });
-}
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/lost_and_found_service.dart';
 
 class LostAndFoundPage extends StatefulWidget {
   const LostAndFoundPage({super.key});
@@ -28,10 +13,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
   int selectedTab = 0; // 0 = Lost, 1 = Found
-
-  // ðŸ”¹ Lists for Lost & Found items
-  List<LostItem> lostItems = [];
-  List<LostItem> foundItems = [];
+  final LostAndFoundService _service = LostAndFoundService();
 
   @override
   void initState() {
@@ -96,34 +78,77 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // ðŸ”¹ Lost Items Tab
-          _buildItemsList(lostItems, isLost: true),
-          // ðŸ”¹ Found Items Tab
-          _buildItemsList(foundItems, isLost: false),
+          // 🔹 Lost Items Tab
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _service.streamLostItems(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "No lost items yet.",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  final item = snapshot.data![index];
+                  return _buildItemCard(item, isLost: true);
+                },
+              );
+            },
+          ),
+          // 🔹 Found Items Tab
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _service.streamFoundItems(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "No found items yet.",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  final item = snapshot.data![index];
+                  return _buildItemCard(item, isLost: false);
+                },
+              );
+            },
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF4A00E0),
-        onPressed: () async {
-          final newItem = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddLostFoundPage(isLost: selectedTab == 0),
-            ),
-          );
-
-          if (newItem != null && newItem is LostItem) {
-            setState(() {
-              if (selectedTab == 0) {
-                lostItems.add(newItem);
-              } else {
-                foundItems.add(newItem);
-              }
-            });
-          }
-        },
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      // Only show + button on Lost Items tab
+      floatingActionButton: selectedTab == 0
+          ? FloatingActionButton(
+              backgroundColor: const Color(0xFF4A00E0),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddLostItemPage(),
+                  ),
+                );
+              },
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         unselectedItemColor: Colors.grey,
@@ -139,135 +164,116 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
     );
   }
 
-  Widget _buildItemsList(List<LostItem> items, {required bool isLost}) {
-    return items.isEmpty
-        ? Center(
-            child: Text(
-              "No ${isLost ? 'lost' : 'found'} items yet.",
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
+  Widget _buildItemCard(Map<String, dynamic> item, {required bool isLost}) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isLost ? Icons.warning_amber : Icons.check_circle,
+                  color: isLost ? Colors.orange : Colors.green,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item['item'] ?? 'Unknown Item',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
+            if (item['notes'] != null && item['notes'].toString().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                item['notes'],
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+            const SizedBox(height: 12),
+            const Divider(),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.person, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  item['name'] ?? 'Anonymous',
+                  style: const TextStyle(fontSize: 14),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.folder,
-                            color: Colors.black,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.item,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              Text(
-                                "Brgy. Buntalan Stirple Block",
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Icon(Icons.person, size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            item.name,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.phone, size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            item.phone,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
+              ],
+            ),
+            if (item['phone'] != null && item['phone'].toString().isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.phone, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    item['phone'],
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
-class AddLostFoundPage extends StatefulWidget {
-  final bool isLost;
-
-  const AddLostFoundPage({super.key, required this.isLost});
+// Add Lost Item Page
+class AddLostItemPage extends StatefulWidget {
+  const AddLostItemPage({super.key});
 
   @override
-  State<AddLostFoundPage> createState() => _AddLostFoundPageState();
+  State<AddLostItemPage> createState() => _AddLostItemPageState();
 }
 
-class _AddLostFoundPageState extends State<AddLostFoundPage> {
+class _AddLostItemPageState extends State<AddLostItemPage> {
   final _formKey = GlobalKey<FormState>();
-  final _itemController = TextEditingController();
-  final _notesController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final LostAndFoundService _service = LostAndFoundService();
+  final TextEditingController _itemController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  bool _isSubmitting = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  void _loadUserInfo() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _nameController.text = user.displayName ?? user.email?.split('@')[0] ?? '';
+      _emailController.text = user.email ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _itemController.dispose();
+    _notesController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -283,8 +289,9 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
             padding: EdgeInsets.zero,
           ),
         ),
+        centerTitle: true,
         title: const Text(
-          "Add Lost Item",
+          "Report Lost Item",
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -292,107 +299,149 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
             children: [
               TextFormField(
                 controller: _itemController,
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
-                  labelText: "Item",
-                  filled: true,
-                  fillColor: Colors.grey[50],
+                  labelText: "Item Name",
+                  hintText: "e.g., Phone, Wallet, Keys",
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
                   ),
                 ),
-                validator: (value) => value!.isEmpty ? "Enter item name" : null,
+                validator: (value) =>
+                    value!.isEmpty ? "Please enter item name" : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _notesController,
+                maxLines: 3,
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: "Notes",
-                  filled: true,
-                  fillColor: Colors.grey[50],
+                  labelText: "Description / Notes",
+                  hintText: "Additional details about the item",
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
+                enabled: false,
+                style: const TextStyle(color: Colors.black87),
                 decoration: InputDecoration(
                   labelText: "Your Name",
                   filled: true,
-                  fillColor: Colors.grey[50],
+                  fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
+                enabled: false,
+                style: const TextStyle(color: Colors.black87),
                 decoration: InputDecoration(
                   labelText: "Email",
                   filled: true,
-                  fillColor: Colors.grey[50],
+                  fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  labelText: "Phone",
-                  filled: true,
-                  fillColor: Colors.grey[50],
+                  labelText: "Phone Number",
+                  hintText: "Your contact number",
                   border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
                   ),
                 ),
+                validator: (value) =>
+                    value!.isEmpty ? "Please enter your phone number" : null,
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A00E0),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A00E0),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                ),
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    Navigator.pop(
-                      context,
-                      LostItem(
-                        item: _itemController.text,
-                        notes: _notesController.text,
-                        name: _nameController.text,
-                        email: _emailController.text,
-                        phone: _phoneController.text,
-                      ),
-                    );
-                  }
-                },
-                child: const Text(
-                  "Save",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  onPressed: _isSubmitting ? null : _submitLostItem,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "Submit Report",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -400,5 +449,51 @@ class _AddLostFoundPageState extends State<AddLostFoundPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitLostItem() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      await _service.submitLostItem(
+        item: _itemController.text.trim(),
+        notes: _notesController.text.trim(),
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Lost item reported successfully! 🔍"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 }

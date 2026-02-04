@@ -1,4 +1,4 @@
-package com.example.capstone
+package com.example.komunidadapp
 
 import io.flutter.embedding.android.FlutterActivity
 

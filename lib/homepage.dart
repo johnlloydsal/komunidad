@@ -24,25 +24,25 @@ class _HomePageState extends State<HomePage> {
     // Navigate based on selected tab
     if (index == 0) {
       // Home - stay on current page
-    } else if (index == 1) {
-      // Community News
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CommunityNewsPage()),
-      );
-    } else if (index == 2) {
-      // Filter/Announcements
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CommunityNewsPage()),
-      );
+      return;
+    }
+
+    // Use pushReplacement for bottom nav to avoid stack buildup
+    Widget destination;
+    if (index == 1 || index == 2) {
+      // Community News or Filter/Announcements
+      destination = const CommunityNewsPage();
     } else if (index == 3) {
       // Profile
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProfilePage()),
-      );
+      destination = const ProfilePage();
+    } else {
+      return;
     }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => destination),
+    );
   }
 
   @override
@@ -58,6 +58,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 80),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -194,7 +195,7 @@ class _HomePageState extends State<HomePage> {
                     _buildServiceCard(
                       context,
                       icon: Icons.description,
-                      title: "View Report & Service Request",
+                      title: "View My Report & Service Request",
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
