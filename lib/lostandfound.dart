@@ -12,13 +12,15 @@ class LostAndFoundPage extends StatefulWidget {
 class _LostAndFoundPageState extends State<LostAndFoundPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  int selectedTab = 0; // 0 = Lost, 1 = Found
   final LostAndFoundService _service = LostAndFoundService();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {}); // Rebuild when tab changes
+    });
   }
 
   @override
@@ -62,11 +64,6 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
               indicatorWeight: 2,
               labelColor: const Color(0xFF4A00E0),
               unselectedLabelColor: Colors.grey,
-              onTap: (index) {
-                setState(() {
-                  selectedTab = index;
-                });
-              },
               tabs: const [
                 Tab(text: "Lost Items"),
                 Tab(text: "Found Items"),
@@ -134,8 +131,8 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
           ),
         ],
       ),
-      // Only show + button on Lost Items tab
-      floatingActionButton: selectedTab == 0
+      // Only show + button on Lost Items tab (index 0)
+      floatingActionButton: _tabController.index == 0
           ? FloatingActionButton(
               backgroundColor: const Color(0xFF4A00E0),
               onPressed: () {
