@@ -73,30 +73,76 @@ class LostAndFoundService {
     }
   }
 
-  // Stream lost items for real-time updates
-  Stream<List<Map<String, dynamic>>> streamLostItems() {
-    return _firestore
-        .collection('lost_items')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => {...doc.data(), 'id': doc.id})
-              .toList(),
-        );
+  // Stream lost items for real-time updates (only user's own items or admin sees all)
+  Stream<List<Map<String, dynamic>>> streamLostItems() async* {
+    final user = _auth.currentUser;
+    if (user == null) {
+      yield [];
+      return;
+    }
+
+    // Check if user is admin
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final isAdmin = userDoc.exists && (userDoc.data()?['isAdmin'] == true);
+
+    yield* _firestore.collection('lost_items').snapshots().map((snapshot) {
+      var items = snapshot.docs
+          .map((doc) => {...doc.data(), 'id': doc.id})
+          .toList();
+
+      // Filter: only show user's own items unless admin
+      if (!isAdmin) {
+        items = items.where((item) => item['userId'] == user.uid).toList();
+      }
+
+      // Sort by createdAt in memory
+      items.sort((a, b) {
+        final aTime = a['createdAt'] as Timestamp?;
+        final bTime = b['createdAt'] as Timestamp?;
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime); // descending order
+      });
+
+      return items;
+    });
   }
 
-  // Stream found items for real-time updates
-  Stream<List<Map<String, dynamic>>> streamFoundItems() {
-    return _firestore
-        .collection('found_items')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => {...doc.data(), 'id': doc.id})
-              .toList(),
-        );
+  // Stream found items for real-time updates (only user's own items or admin sees all)
+  Stream<List<Map<String, dynamic>>> streamFoundItems() async* {
+    final user = _auth.currentUser;
+    if (user == null) {
+      yield [];
+      return;
+    }
+
+    // Check if user is admin
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final isAdmin = userDoc.exists && (userDoc.data()?['isAdmin'] == true);
+
+    yield* _firestore.collection('found_items').snapshots().map((snapshot) {
+      var items = snapshot.docs
+          .map((doc) => {...doc.data(), 'id': doc.id})
+          .toList();
+
+      // Filter: only show user's own items unless admin
+      if (!isAdmin) {
+        items = items.where((item) => item['userId'] == user.uid).toList();
+      }
+
+      // Sort by createdAt in memory
+      items.sort((a, b) {
+        final aTime = a['createdAt'] as Timestamp?;
+        final bTime = b['createdAt'] as Timestamp?;
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime); // descending order
+      });
+
+      return items;
+    });
   }
 
   // Update item status

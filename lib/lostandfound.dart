@@ -60,9 +60,9 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
             color: Colors.white,
             child: TabBar(
               controller: _tabController,
-              indicatorColor: const Color(0xFF4A00E0),
+              indicatorColor: const Color(0xFF1E3A8A),
               indicatorWeight: 2,
-              labelColor: const Color(0xFF4A00E0),
+              labelColor: const Color(0xFF1E3A8A),
               unselectedLabelColor: Colors.grey,
               tabs: const [
                 Tab(text: "Lost Items"),
@@ -190,12 +190,10 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
                 ),
               ],
             ),
-            if (item['notes'] != null && item['notes'].toString().isNotEmpty) ...[
+            if (item['notes'] != null &&
+                item['notes'].toString().isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(
-                item['notes'],
-                style: TextStyle(color: Colors.grey[600]),
-              ),
+              Text(item['notes'], style: TextStyle(color: Colors.grey[600])),
             ],
             const SizedBox(height: 12),
             const Divider(),
@@ -210,16 +208,14 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
                 ),
               ],
             ),
-            if (item['phone'] != null && item['phone'].toString().isNotEmpty) ...[
+            if (item['phone'] != null &&
+                item['phone'].toString().isNotEmpty) ...[
               const SizedBox(height: 4),
               Row(
                 children: [
                   const Icon(Icons.phone, size: 16, color: Colors.grey),
                   const SizedBox(width: 4),
-                  Text(
-                    item['phone'],
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                  Text(item['phone'], style: const TextStyle(fontSize: 14)),
                 ],
               ),
             ],
@@ -257,7 +253,8 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
   void _loadUserInfo() {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      _nameController.text = user.displayName ?? user.email?.split('@')[0] ?? '';
+      _nameController.text =
+          user.displayName ?? user.email?.split('@')[0] ?? '';
       _emailController.text = user.email ?? '';
     }
   }
@@ -271,6 +268,7 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
     _phoneController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -319,7 +317,7 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
                   ),
                 ),
                 validator: (value) =>
@@ -415,7 +413,7 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A00E0),
+                    backgroundColor: const Color(0xFF1E3A8A),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

@@ -191,7 +191,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -203,7 +203,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
 
               // Category Dropdown
               DropdownButtonFormField<String>(
-                value: selectedCategory,
+                initialValue: selectedCategory,
                 isExpanded: true,
                 decoration: InputDecoration(
                   hintText: "Select Category",
@@ -217,7 +217,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -244,7 +244,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
 
               // Location Dropdown
               DropdownButtonFormField<String>(
-                value: selectedLocation,
+                initialValue: selectedLocation,
                 isExpanded: true,
                 decoration: InputDecoration(
                   hintText: "Select Location (Zone)",
@@ -258,7 +258,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -297,7 +297,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -458,7 +458,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A00E0),
+                    backgroundColor: const Color(0xFF1E3A8A),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

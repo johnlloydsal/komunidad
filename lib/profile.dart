@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'login.dart';
+import 'auth_wrapper.dart';
 import 'homepage.dart';
 import 'community_news.dart';
 import 'services/auth_service.dart';
@@ -18,7 +18,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
   User? currentUser;
-  int _selectedIndex = 3; // Profile tab is selected
+  final int _selectedIndex = 3; // Profile tab is selected
 
   void _onBottomNavTap(int index) {
     if (index == _selectedIndex) return;
@@ -54,8 +54,11 @@ class _ProfilePageState extends State<ProfilePage> {
             photoUrl: currentUser!.photoURL,
           )
           .catchError((e) {
-            print('Error ensuring user profile: $e');
+            print('⚠️ Error ensuring user profile: $e');
+            return null;
           });
+    } else {
+      print('⚠️ No current user in ProfilePage initState');
     }
   }
 
@@ -74,6 +77,30 @@ class _ProfilePageState extends State<ProfilePage> {
           );
         }
 
+        // Handle errors
+        if (snapshot.hasError) {
+          print('❌ Profile stream error: ${snapshot.error}');
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, size: 60, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error loading profile: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {});
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         Map<String, dynamic>? userData;
         if (snapshot.hasData && snapshot.data!.exists) {
           userData = snapshot.data!.data() as Map<String, dynamic>?;
@@ -85,6 +112,7 @@ class _ProfilePageState extends State<ProfilePage> {
             currentUser?.email?.split('@')[0] ??
             'User';
         String email = userData?['email'] ?? currentUser?.email ?? 'No email';
+        String? username = userData?['username'];
         String? photoUrl = userData?['photoUrl'] ?? currentUser?.photoURL;
 
         // Get account creation date
@@ -122,7 +150,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     children: [
                       CircleAvatar(
                         radius: 55,
-                        backgroundColor: const Color(0xFF4A00E0),
+                        backgroundColor: const Color(0xFF1E3A8A),
                         backgroundImage: photoUrl != null
                             ? NetworkImage(photoUrl)
                             : null,
@@ -144,6 +172,17 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 4),
+                      if (username != null && username.isNotEmpty) ...[
+                        Text(
+                          '@$username',
+                          style: const TextStyle(
+                            color: Color(0xFF1E3A8A),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                       Text(
                         email,
                         style: const TextStyle(
@@ -236,16 +275,31 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           TextButton(
                             onPressed: () async {
-                              Navigator.pop(context);
-                              await _authService.signOut();
-                              if (!mounted) return;
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const LoginPage(),
-                                ),
-                                (route) => false,
-                              );
+                              Navigator.pop(context); // Close dialog
+
+                              try {
+                                // Sign out from Firebase
+                                await _authService.signOut();
+
+                                if (!mounted) return;
+
+                                // Navigate to AuthWrapper and clear all routes
+                                // AuthWrapper will automatically show FirstPage
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => const AuthWrapper(),
+                                  ),
+                                  (route) => false,
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Logout failed: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             },
                             child: const Text(
                               "Logout",
@@ -296,7 +350,7 @@ class _ProfilePageState extends State<ProfilePage> {
             currentIndex: _selectedIndex,
             backgroundColor: Colors.white,
             unselectedItemColor: Colors.grey,
-            selectedItemColor: const Color(0xFF4A00E0),
+            selectedItemColor: const Color(0xFF1E3A8A),
             type: BottomNavigationBarType.fixed,
             onTap: _onBottomNavTap,
             items: const [
@@ -333,14 +387,22 @@ class _ProfilePageState extends State<ProfilePage> {
     BuildContext context,
     Map<String, dynamic>? userData,
   ) {
-    final nameController = TextEditingController(
-      text: userData?['displayName'] ?? currentUser?.displayName ?? '',
+    // Split display name into first and last name
+    String fullName =
+        userData?['displayName'] ?? currentUser?.displayName ?? '';
+    List<String> nameParts = fullName.split(' ');
+    String firstName = nameParts.isNotEmpty ? nameParts[0] : '';
+    String lastName = nameParts.length > 1
+        ? nameParts.sublist(1).join(' ')
+        : '';
+
+    final firstNameController = TextEditingController(text: firstName);
+    final lastNameController = TextEditingController(text: lastName);
+    final usernameController = TextEditingController(
+      text: userData?['username'] ?? '',
     );
     final phoneController = TextEditingController(
       text: userData?['phoneNumber'] ?? '',
-    );
-    final addressController = TextEditingController(
-      text: userData?['address'] ?? '',
     );
 
     showDialog(
@@ -352,33 +414,56 @@ class _ProfilePageState extends State<ProfilePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: nameController,
+                controller: firstNameController,
                 decoration: const InputDecoration(
-                  labelText: "Display Name",
+                  labelText: "First Name",
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+              TextField(
+                controller: lastNameController,
+                decoration: const InputDecoration(
+                  labelText: "Last Name",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: usernameController,
+                decoration: const InputDecoration(
+                  labelText: "Username",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: phoneController,
+                keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
                   labelText: "Phone Number",
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: addressController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: "Address",
-                  border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Email: ${currentUser?.email ?? 'No email'}",
-                style: const TextStyle(color: Colors.grey),
+                child: Row(
+                  children: [
+                    const Icon(Icons.email, color: Colors.grey, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        currentUser?.email ?? 'No email',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -391,23 +476,32 @@ class _ProfilePageState extends State<ProfilePage> {
           TextButton(
             onPressed: () async {
               try {
+                String displayName =
+                    '${firstNameController.text.trim()} ${lastNameController.text.trim()}'
+                        .trim();
+
                 // Update Firebase Auth display name
-                await currentUser?.updateDisplayName(
-                  nameController.text.trim(),
-                );
+                await currentUser?.updateDisplayName(displayName);
                 await currentUser?.reload();
 
                 // Update Firestore
                 if (currentUser != null) {
                   await _userService.updateUserProfile(
                     uid: currentUser!.uid,
-                    displayName: nameController.text.trim(),
+                    displayName: displayName,
                     phoneNumber: phoneController.text.trim(),
-                    address: addressController.text.trim(),
                   );
-                }
 
-                // Profile will auto-update via StreamBuilder
+                  // Update username separately if needed
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(currentUser!.uid)
+                      .update({
+                        'username': usernameController.text.trim(),
+                        'firstName': firstNameController.text.trim(),
+                        'lastName': lastNameController.text.trim(),
+                      });
+                }
 
                 if (!mounted) return;
                 Navigator.pop(context);
@@ -574,10 +668,10 @@ class _ProfilePageState extends State<ProfilePage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF4A00E0).withOpacity(0.1),
+                color: const Color(0xFF1E3A8A).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: const Color(0xFF4A00E0), size: 24),
+              child: Icon(icon, color: const Color(0xFF1E3A8A), size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(

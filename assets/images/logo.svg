@@ -1,0 +1,22 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Mountain/House Logo -->
+  <g transform="translate(100, 100)">
+    <!-- Left Mountain -->
+    <path d="M -80 30 L -50 -30 L -20 30 Z" fill="#2C3E50" stroke="none"/>
+    
+    <!-- Middle Mountain -->
+    <path d="M -40 30 L 0 -50 L 40 30 Z" fill="#34495E" stroke="none"/>
+    
+    <!-- Right Mountain -->
+    <path d="M 20 30 L 50 -30 L 80 30 Z" fill="#2C3E50" stroke="none"/>
+    
+    <!-- House Window -->
+    <rect x="-12" y="-10" width="10" height="10" fill="white" opacity="0.9"/>
+    <rect x="2" y="-10" width="10" height="10" fill="white" opacity="0.9"/>
+    <rect x="-12" y="5" width="10" height="10" fill="white" opacity="0.9"/>
+    <rect x="2" y="5" width="10" height="10" fill="white" opacity="0.9"/>
+    
+    <!-- Base -->
+    <rect x="-90" y="30" width="180" height="5" fill="#1A252F"/>
+  </g>
+</svg>

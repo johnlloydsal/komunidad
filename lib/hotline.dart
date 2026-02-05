@@ -12,24 +12,48 @@ class HotlinePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("ILOILO CITY EMERGENCY HOTLINES"),
         backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildHotlineButton(context, "EMERGENCIES", const EmergenciesPage()),
+            _buildHotlineButton(
+              context,
+              "EMERGENCIES",
+              const EmergenciesPage(),
+            ),
             const SizedBox(height: 10),
-            _buildHotlineButton(context, "FIRE STATION", const FireStationPage()),
+            _buildHotlineButton(
+              context,
+              "FIRE STATION",
+              const FireStationPage(),
+            ),
             const SizedBox(height: 10),
-            _buildHotlineButton(context, "HEALTH CENTERS", const HealthCentersPage()),
+            _buildHotlineButton(
+              context,
+              "HEALTH CENTERS",
+              const HealthCentersPage(),
+            ),
             const SizedBox(height: 10),
             _buildHotlineButton(context, "HOSPITALS", const HospitalsPage()),
             const SizedBox(height: 10),
-            _buildHotlineButton(context, "COAST GUARDS", const CoastGuardsPage()),
+            _buildHotlineButton(
+              context,
+              "COAST GUARDS",
+              const CoastGuardsPage(),
+            ),
             const SizedBox(height: 10),
-            _buildHotlineButton(context, "POLICE STATION", const PoliceStationPage()),
+            _buildHotlineButton(
+              context,
+              "POLICE STATION",
+              const PoliceStationPage(),
+            ),
           ],
         ),
       ),
@@ -41,9 +65,11 @@ class HotlinePage extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4A00E0),
+          backgroundColor: const Color(0xFF1E3A8A),
           padding: const EdgeInsets.symmetric(vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         onPressed: () {
           Navigator.push(
@@ -85,7 +111,7 @@ Widget _buildHotlineCard(String title, String number) {
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF4A00E0),
+                color: const Color(0xFF1E3A8A),
               ),
             ),
           ),
@@ -114,7 +140,11 @@ class EmergenciesPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("EMERGENCIES"),
         backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         elevation: 0,
       ),
       body: ListView(
@@ -142,7 +172,11 @@ class FireStationPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("FIRE STATION"),
         backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         elevation: 0,
       ),
       body: ListView(
@@ -170,7 +204,11 @@ class HealthCentersPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("HEALTH CENTERS"),
         backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         elevation: 0,
       ),
       body: ListView(
@@ -197,7 +235,11 @@ class HospitalsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("HOSPITALS"),
         backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         elevation: 0,
       ),
       body: ListView(
@@ -224,7 +266,11 @@ class CoastGuardsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("COAST GUARDS"),
         backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         elevation: 0,
       ),
       body: ListView(
@@ -250,7 +296,11 @@ class PoliceStationPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("POLICE STATION"),
         backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
         elevation: 0,
       ),
       body: ListView(

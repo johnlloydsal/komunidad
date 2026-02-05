@@ -12,7 +12,7 @@ class CommunityNewsPage extends StatefulWidget {
 class _CommunityNewsPageState extends State<CommunityNewsPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  int _selectedIndex = 1; // Community News tab is selected
+  final int _selectedIndex = 1; // Community News tab is selected
 
   void _onBottomNavTap(int index) {
     if (index == _selectedIndex) return;
@@ -99,8 +99,8 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
         centerTitle: false,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF4A00E0),
-          labelColor: const Color(0xFF4A00E0),
+          indicatorColor: const Color(0xFF1E3A8A),
+          labelColor: const Color(0xFF1E3A8A),
           unselectedLabelColor: Colors.grey,
           tabs: const [
             Tab(text: "All"),
@@ -129,7 +129,7 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
         currentIndex: _selectedIndex,
         backgroundColor: Colors.white,
         unselectedItemColor: Colors.grey,
-        selectedItemColor: const Color(0xFF4A00E0),
+        selectedItemColor: const Color(0xFF1E3A8A),
         type: BottomNavigationBarType.fixed,
         onTap: _onBottomNavTap,
         items: const [
