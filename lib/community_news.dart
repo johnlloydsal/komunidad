@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'homepage.dart';
 import 'profile.dart';
+import 'services/announcement_service.dart';
 
 class CommunityNewsPage extends StatefulWidget {
   const CommunityNewsPage({super.key});
@@ -13,6 +14,7 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final int _selectedIndex = 1; // Community News tab is selected
+  final AnnouncementService _announcementService = AnnouncementService();
 
   void _onBottomNavTap(int index) {
     if (index == _selectedIndex) return;
@@ -34,32 +36,23 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
     );
   }
 
-  final List<NewsItem> allNews = [
-    NewsItem(
-      category: "Barangay",
-      title: "Barangay Coming-Up Drive",
-      source: "Source: Barangay Hall",
-      date: "Nov 15, 2024 | 1 hour ago",
-    ),
-    NewsItem(
-      category: "Advisory",
-      title: "Severe Weather Alert Issued",
-      source: "Source: Adv Clim",
-      date: "Nov 15, 2024 | 1 hour ago",
-    ),
-    NewsItem(
-      category: "Global",
-      title: "Massive Corruption in The Philippines",
-      source: "Source: News Daily",
-      date: "Nov 15, 2024 | 1 hour ago",
-    ),
-    NewsItem(
-      category: "Global",
-      title: "Palestine vs. Israel News Updates",
-      source: "Source: GNN News",
-      date: "Nov 15, 2024 | 1 hour ago",
-    ),
-  ];
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Recently';
+
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minute${difference.inMinutes != 1 ? 's' : ''} ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hour${difference.inHours != 1 ? 's' : ''} ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} day${difference.inDays != 1 ? 's' : ''} ago';
+    } else {
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    }
+  }
 
   @override
   void initState() {
@@ -73,6 +66,146 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
     super.dispose();
   }
 
+  Widget _buildAnnouncementStream(String? category) {
+    return StreamBuilder<List<Announcement>>(
+      stream: category == null 
+          ? _announcementService.streamAnnouncements()
+          : _announcementService.streamAnnouncementsByCategory(category),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading announcements',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final announcements = snapshot.data ?? [];
+        
+        if (announcements.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.article_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  category == null 
+                      ? 'No announcements yet'
+                      : 'No $category announcements yet',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return _buildNewsList(announcements);
+      },
+    );
+  }
+
+  Widget _buildNewsList(List<Announcement> news) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: news.length,
+      itemBuilder: (context, index) {
+        final item = news[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image or placeholder
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                  image: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(item.imageUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: item.imageUrl == null || item.imageUrl!.isEmpty
+                    ? Icon(Icons.article, color: Colors.grey[500], size: 30)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.source,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatDate(item.createdAt),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,45 +217,50 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
           padding: const EdgeInsets.only(left: 8.0),
           child: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
-            onPressed: () => Navigator.pop(context),
-            padding: EdgeInsets.zero,
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomePage()),
+              );
+            },
           ),
         ),
         title: const Text(
           "Community News",
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
         ),
         centerTitle: false,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFF1E3A8A),
-          labelColor: const Color(0xFF1E3A8A),
-          unselectedLabelColor: Colors.grey,
-          tabs: const [
-            Tab(text: "All"),
-            Tab(text: "Barangay"),
-            Tab(text: "Events"),
-            Tab(text: "Advisory"),
-            Tab(text: "Security"),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            indicatorColor: const Color(0xFF1E3A8A),
+            labelColor: const Color(0xFF1E3A8A),
+            unselectedLabelColor: Colors.grey,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            tabs: const [
+              Tab(text: "All"),
+              Tab(text: "Barangay"),
+              Tab(text: "Events"),
+              Tab(text: "Advisory"),
+              Tab(text: "Security"),
+            ],
+          ),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildNewsList(allNews),
-          _buildNewsList(
-            allNews.where((item) => item.category == "Barangay").toList(),
-          ),
-          _buildNewsList([]),
-          _buildNewsList(
-            allNews.where((item) => item.category == "Advisory").toList(),
-          ),
-          _buildNewsList([]),
+          _buildAnnouncementStream(null), // All
+          _buildAnnouncementStream('barangay'),
+          _buildAnnouncementStream('events'),
+          _buildAnnouncementStream('advisory'),
+          _buildAnnouncementStream('security'),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -141,91 +279,4 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
       ),
     );
   }
-
-  Widget _buildNewsList(List<NewsItem> news) {
-    return news.isEmpty
-        ? const Center(
-            child: Text(
-              "No news available",
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: news.length,
-            itemBuilder: (context, index) {
-              final item = news[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.title,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.source,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.date,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-  }
-}
-
-class NewsItem {
-  final String category;
-  final String title;
-  final String source;
-  final String date;
-
-  NewsItem({
-    required this.category,
-    required this.title,
-    required this.source,
-    required this.date,
-  });
-}
+    }
