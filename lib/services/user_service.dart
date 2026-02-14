@@ -13,6 +13,7 @@ class UserService {
     String? firstName,
     String? lastName,
     String? phoneNumber,
+    String? accountStatus,
   }) async {
     try {
       print('📄 Creating user profile for UID: $uid');
@@ -50,6 +51,7 @@ class UserService {
       if (finalFirstName != null) userData['firstName'] = finalFirstName;
       if (finalLastName != null) userData['lastName'] = finalLastName;
       if (phoneNumber != null) userData['phoneNumber'] = phoneNumber;
+      if (accountStatus != null) userData['accountStatus'] = accountStatus;
 
       await _firestore
           .collection('users')
@@ -215,6 +217,156 @@ class UserService {
     } catch (e) {
       print('Error checking admin status: $e');
       return false;
+    }
+  }
+
+  // Get account status
+  Future<String> getAccountStatus(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['accountStatus'] ??
+            'approved'; // Default to approved for existing users
+      }
+      return 'pending';
+    } catch (e) {
+      print('Error getting account status: $e');
+      return 'pending';
+    }
+  }
+
+  // Stream account status
+  Stream<String> streamAccountStatus(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots().map((doc) {
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['accountStatus'] ?? 'approved';
+      }
+      return 'pending';
+    });
+  }
+
+  // Get all pending users (admin only)
+  Stream<List<Map<String, dynamic>>> streamPendingUsers() {
+    return _firestore
+        .collection('users')
+        .where('accountStatus', isEqualTo: 'pending')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['uid'] = doc.id;
+            return data;
+          }).toList();
+        });
+  }
+
+  // Approve user (admin only)
+  Future<void> approveUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'accountStatus': 'approved',
+        'approvedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ User $uid approved successfully');
+    } catch (e) {
+      print('❌ Error approving user: $e');
+      rethrow;
+    }
+  }
+
+  // Reject user (admin only)
+  Future<void> rejectUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'accountStatus': 'rejected',
+        'rejectedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ User $uid rejected successfully');
+    } catch (e) {
+      print('❌ Error rejecting user: $e');
+      rethrow;
+    }
+  }
+
+  // Get all users with their status (admin only)
+  Stream<List<Map<String, dynamic>>> streamAllUsers() {
+    return _firestore
+        .collection('users')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['uid'] = doc.id;
+            return data;
+          }).toList();
+        });
+  }
+
+  // Delete user and all their records (admin only)
+  Future<void> deleteUserAndRecords(String uid) async {
+    try {
+      print('🗑️ Starting deletion of user $uid and all their records...');
+
+      // Delete all user's reports
+      final reportsSnapshot = await _firestore
+          .collection('reports')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (var doc in reportsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+      print('✅ Deleted ${reportsSnapshot.docs.length} reports');
+
+      // Delete all user's service requests
+      final serviceRequestsSnapshot = await _firestore
+          .collection('service_requests')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (var doc in serviceRequestsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+      print(
+        '✅ Deleted ${serviceRequestsSnapshot.docs.length} service requests',
+      );
+
+      // Delete all user's lost items
+      final lostItemsSnapshot = await _firestore
+          .collection('lost_items')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (var doc in lostItemsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+      print('✅ Deleted ${lostItemsSnapshot.docs.length} lost items');
+
+      // Delete all user's found items
+      final foundItemsSnapshot = await _firestore
+          .collection('found_items')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (var doc in foundItemsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+      print('✅ Deleted ${foundItemsSnapshot.docs.length} found items');
+
+      // Delete user profile document from Firestore
+      await _firestore.collection('users').doc(uid).delete();
+      print('✅ Deleted user profile document');
+
+      print('✅ User $uid and all their records deleted successfully');
+    } catch (e) {
+      print('❌ Error deleting user and records: $e');
+      rethrow;
     }
   }
 }

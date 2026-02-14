@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'FirsPage.dart';
 import 'homepage.dart';
+import 'pending_approval.dart';
+import 'services/user_service.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -12,6 +15,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _hasTimeout = false;
+  final UserService _userService = UserService();
 
   @override
   void initState() {
@@ -63,10 +67,38 @@ class _AuthWrapperState extends State<AuthWrapper> {
           '🔍 Auth State: hasData=${snapshot.hasData}, user=${snapshot.data?.email}',
         );
 
-        // If user is logged in, show HomePage
+        // If user is logged in, check account status
         if (snapshot.hasData && snapshot.data != null) {
-          print('✅ User logged in, showing HomePage');
-          return const HomePage();
+          final user = snapshot.data!;
+          print('✅ User logged in: ${user.email}');
+
+          // Check account status
+          return StreamBuilder<String>(
+            stream: _userService.streamAccountStatus(user.uid),
+            builder: (context, statusSnapshot) {
+              if (statusSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final accountStatus = statusSnapshot.data ?? 'pending';
+              print('📋 Account status: $accountStatus');
+
+              // Route based on status
+              if (accountStatus == 'approved') {
+                print('✅ Account approved, showing HomePage');
+                return const HomePage();
+              } else if (accountStatus == 'rejected') {
+                print('❌ Account rejected, showing PendingApprovalPage');
+                return const PendingApprovalPage();
+              } else {
+                // pending or any other status
+                print('⏳ Account pending, showing PendingApprovalPage');
+                return const PendingApprovalPage();
+              }
+            },
+          );
         }
 
         // If not logged in, show FirstPage (landing page)

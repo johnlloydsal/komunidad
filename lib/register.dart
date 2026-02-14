@@ -437,6 +437,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                           firstName: firstName,
                                           lastName: lastName,
                                           phoneNumber: phone,
+                                          accountStatus: 'pending', // Set account status to pending
                                         );
                                         print('✅ Firestore save complete!');
 
@@ -447,15 +448,15 @@ class _RegisterPageState extends State<RegisterPage> {
                                         ).showSnackBar(
                                           const SnackBar(
                                             content: Text(
-                                              "Registration Successful! Welcome! 🎉",
+                                              "Registration Successful! Awaiting admin approval.",
                                             ),
                                             backgroundColor: Colors.green,
-                                            duration: Duration(seconds: 2),
+                                            duration: Duration(seconds: 3),
                                           ),
                                         );
 
                                         // AuthWrapper will automatically detect the user is logged in
-                                        // and navigate to HomePage - just pop all routes
+                                        // and route to pending approval page
                                         await Future.delayed(
                                           const Duration(milliseconds: 500),
                                         );

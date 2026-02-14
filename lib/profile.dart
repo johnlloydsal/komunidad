@@ -6,6 +6,7 @@ import 'homepage.dart';
 import 'community_news.dart';
 import 'services/auth_service.dart';
 import 'services/user_service.dart';
+import 'admin_user_management.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -255,6 +256,56 @@ class _ProfilePageState extends State<ProfilePage> {
                         content: Text("Terms and Conditions opened"),
                       ),
                     );
+                  },
+                ),
+
+                // 🔹 Admin Section (only visible to admins)
+                FutureBuilder<bool>(
+                  future: _userService.isAdmin(currentUser!.uid),
+                  builder: (context, adminSnapshot) {
+                    if (adminSnapshot.data == true) {
+                      return Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'ADMIN PANEL',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildProfileSection(
+                            context: context,
+                            userData: userData,
+                            icon: Icons.admin_panel_settings,
+                            title: "User Management",
+                            subtitle: "Approve or reject user registrations",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const AdminUserManagementPage(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
                   },
                 ),
 
