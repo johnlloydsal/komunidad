@@ -43,6 +43,7 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
     'Social Services & Complaints',
     'Animal-Related Complaints',
     'Traffic & Road Safety Complaints',
+    'General Complaints',
     'Other (Please Specify in the description)',
   ];
 
@@ -530,6 +531,8 @@ class _ReportIssuePageState extends State<ReportIssuePage> {
         category: selectedCategory!,
         location: selectedLocation!,
         mediaUrls: mediaUrls.isNotEmpty ? mediaUrls : null,
+        latitude: null, // TODO: Add GPS coordinates from map picker
+        longitude: null, // TODO: Add GPS coordinates from map picker
       );
 
       if (!mounted) return;

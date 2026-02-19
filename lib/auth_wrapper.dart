@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'FirsPage.dart';
 import 'homepage.dart';
 import 'pending_approval.dart';
@@ -16,6 +15,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _hasTimeout = false;
   final UserService _userService = UserService();
+  String? _cachedStatus;
 
   @override
   void initState() {
@@ -32,6 +32,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    print('🔄 AuthWrapper building...');
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -72,30 +73,60 @@ class _AuthWrapperState extends State<AuthWrapper> {
           final user = snapshot.data!;
           print('✅ User logged in: ${user.email}');
 
-          // Check account status
+          // Check account status with real-time updates
           return StreamBuilder<String>(
             stream: _userService.streamAccountStatus(user.uid),
             builder: (context, statusSnapshot) {
-              if (statusSnapshot.connectionState == ConnectionState.waiting) {
+              // Add more detailed logging
+              print('📊 Status snapshot - connectionState: ${statusSnapshot.connectionState}, hasData: ${statusSnapshot.hasData}, data: ${statusSnapshot.data}');
+              
+              // Don't show loading if we have cached data
+              if (statusSnapshot.connectionState == ConnectionState.waiting && _cachedStatus == null) {
+                print('⏳ Initial loading of account status...');
                 return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Checking account status...'),
+                      ],
+                    ),
+                  ),
                 );
               }
 
-              final accountStatus = statusSnapshot.data ?? 'pending';
-              print('📋 Account status: $accountStatus');
+              if (statusSnapshot.hasError) {
+                print('❌ Status stream error: ${statusSnapshot.error}');
+                // Default to pending on error
+                return const PendingApprovalPage();
+              }
 
-              // Route based on status
-              if (accountStatus == 'approved') {
-                print('✅ Account approved, showing HomePage');
-                return const HomePage();
+              // Get current status from stream or use cached
+              final accountStatus = statusSnapshot.data ?? _cachedStatus ?? 'pending';
+              
+              // Update cached status if we have new data
+              if (statusSnapshot.hasData && statusSnapshot.data != _cachedStatus) {
+                _cachedStatus = statusSnapshot.data;
+                print('🔄 Status changed from $_cachedStatus to ${statusSnapshot.data}');
+              }
+              
+              print('📋 Current account status: $accountStatus');
+
+              // Route based on status with immediate rebuild
+              // Accept both 'approved' and 'active' (for backward compatibility)
+              if (accountStatus == 'approved' || accountStatus == 'active') {
+                print('✅ Account approved/active, showing HomePage');
+                // Force rebuild by using a key
+                return const HomePage(key: ValueKey('homepage_approved'));
               } else if (accountStatus == 'rejected') {
                 print('❌ Account rejected, showing PendingApprovalPage');
-                return const PendingApprovalPage();
+                return const PendingApprovalPage(key: ValueKey('pending_rejected'));
               } else {
                 // pending or any other status
                 print('⏳ Account pending, showing PendingApprovalPage');
-                return const PendingApprovalPage();
+                return const PendingApprovalPage(key: ValueKey('pending_waiting'));
               }
             },
           );

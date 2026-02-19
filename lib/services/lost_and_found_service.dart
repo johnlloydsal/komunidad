@@ -12,6 +12,7 @@ class LostAndFoundService {
     required String name,
     required String email,
     required String phone,
+    required String location,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -22,11 +23,13 @@ class LostAndFoundService {
       await _firestore.collection('lost_items').add({
         'userId': user.uid,
         'userEmail': user.email,
+        'userName': name,
         'item': item,
         'notes': notes,
         'name': name,
         'email': email,
         'phone': phone,
+        'location': location,
         'status': 'lost', // lost, found, claimed
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -43,9 +46,8 @@ class LostAndFoundService {
   Future<void> submitFoundItem({
     required String item,
     required String notes,
-    required String name,
-    required String email,
-    required String phone,
+    String? imageUrl,
+    String? location,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -56,11 +58,11 @@ class LostAndFoundService {
       await _firestore.collection('found_items').add({
         'userId': user.uid,
         'userEmail': user.email,
+        'userName': user.displayName ?? user.email?.split('@')[0] ?? '',
         'item': item,
         'notes': notes,
-        'name': name,
-        'email': email,
-        'phone': phone,
+        'imageUrl': imageUrl,
+        'location': location,
         'status': 'found', // found, claimed
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -109,7 +111,7 @@ class LostAndFoundService {
     });
   }
 
-  // Stream found items for real-time updates (only user's own items or admin sees all)
+  // Stream found items for real-time updates (visible to all users)
   Stream<List<Map<String, dynamic>>> streamFoundItems() async* {
     final user = _auth.currentUser;
     if (user == null) {
@@ -117,19 +119,11 @@ class LostAndFoundService {
       return;
     }
 
-    // Check if user is admin
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
-    final isAdmin = userDoc.exists && (userDoc.data()?['isAdmin'] == true);
-
+    // Found items are visible to everyone (no userId filter)
     yield* _firestore.collection('found_items').snapshots().map((snapshot) {
       var items = snapshot.docs
           .map((doc) => {...doc.data(), 'id': doc.id})
           .toList();
-
-      // Filter: only show user's own items unless admin
-      if (!isAdmin) {
-        items = items.where((item) => item['userId'] == user.uid).toList();
-      }
 
       // Sort by createdAt in memory
       items.sort((a, b) {

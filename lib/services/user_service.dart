@@ -13,15 +13,31 @@ class UserService {
     String? firstName,
     String? lastName,
     String? phoneNumber,
+    String? submitId,
+    String? idImageUrl,
     String? accountStatus,
   }) async {
     try {
       print('📄 Creating user profile for UID: $uid');
       print('📄 Email: $email, DisplayName: $displayName');
 
-      // Generate username if not provided
-      String finalUsername =
-          username ?? await _generateUniqueUsername(email, displayName);
+      // Check if user already exists
+      final existingDoc = await _firestore.collection('users').doc(uid).get();
+      final existingData = existingDoc.data();
+      
+      // Generate username ONLY if not provided AND user doesn't exist yet
+      String finalUsername;
+      if (username != null) {
+        finalUsername = username;
+      } else if (existingData != null && existingData['username'] != null) {
+        // Use existing username if user already exists
+        finalUsername = existingData['username'];
+        print('🔄 Using existing username: $finalUsername');
+      } else {
+        // Generate new username only for new users
+        finalUsername = await _generateUniqueUsername(email, displayName);
+        print('🆕 Generated new username: $finalUsername');
+      }
 
       // Split displayName into firstName and lastName if provided
       String? finalFirstName = firstName;
@@ -44,14 +60,27 @@ class UserService {
         'displayName': displayName ?? email.split('@')[0],
         'photoUrl': photoUrl,
         'username': finalUsername,
-        'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
+
+      // Only set createdAt for new users
+      if (existingData == null) {
+        userData['createdAt'] = FieldValue.serverTimestamp();
+      }
 
       if (finalFirstName != null) userData['firstName'] = finalFirstName;
       if (finalLastName != null) userData['lastName'] = finalLastName;
       if (phoneNumber != null) userData['phoneNumber'] = phoneNumber;
-      if (accountStatus != null) userData['accountStatus'] = accountStatus;
+      if (submitId != null) userData['submitId'] = submitId;
+      if (idImageUrl != null) userData['idImageUrl'] = idImageUrl;
+      
+      // Only set accountStatus if provided (don't overwrite existing status)
+      if (accountStatus != null) {
+        userData['accountStatus'] = accountStatus;
+      } else if (existingData == null) {
+        // Set default status only for new users
+        userData['accountStatus'] = 'pending';
+      }
 
       await _firestore
           .collection('users')
@@ -139,6 +168,7 @@ class UserService {
     String? username,
     String? firstName,
     String? lastName,
+    String? submitId,
   }) async {
     try {
       print('📝 Updating user profile for UID: $uid');
@@ -186,6 +216,10 @@ class UserService {
         updates['lastName'] = lastName;
         print('   - lastName: $lastName');
       }
+      if (submitId != null) {
+        updates['submitId'] = submitId;
+        print('   - submitId: $submitId');
+      }
 
       // Use set with merge to create document if it doesn't exist
       await _firestore
@@ -224,10 +258,11 @@ class UserService {
   Future<String> getAccountStatus(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
+      if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
-        return data['accountStatus'] ??
-            'approved'; // Default to approved for existing users
+        final status = data['accountStatus'] as String?;
+        print('📋 Got status for $uid: ${status ?? "null (defaulting to pending)"}');
+        return status ?? 'pending';
       }
       return 'pending';
     } catch (e) {
@@ -236,13 +271,24 @@ class UserService {
     }
   }
 
-  // Stream account status
+  // Stream account status with real-time updates
   Stream<String> streamAccountStatus(String uid) {
-    return _firestore.collection('users').doc(uid).snapshots().map((doc) {
-      if (doc.exists) {
+    print('🎧 Setting up real-time status stream for user: $uid');
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots(includeMetadataChanges: true) // Include metadata changes for faster updates
+        .map((doc) {
+      print('📡 Stream update received for $uid - exists: ${doc.exists}, hasPendingWrites: ${doc.metadata.hasPendingWrites}');
+      
+      if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
-        return data['accountStatus'] ?? 'approved';
+        final status = data['accountStatus'] as String?;
+        print('📊 Stream emitting status for $uid: ${status ?? "null (defaulting to pending)"}');
+        // Default to 'pending' if status is not set (safer than approved)
+        return status ?? 'pending';
       }
+      print('⚠️ User document does not exist for $uid in stream, defaulting to pending');
       return 'pending';
     });
   }
@@ -266,12 +312,20 @@ class UserService {
   // Approve user (admin only)
   Future<void> approveUser(String uid) async {
     try {
+      print('🔄 Approving user: $uid');
       await _firestore.collection('users').doc(uid).update({
         'accountStatus': 'approved',
         'approvedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
       print('✅ User $uid approved successfully');
+      
+      // Verify the update
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final status = doc.data()?['accountStatus'];
+        print('✔️ Verified status in Firestore: $status');
+      }
     } catch (e) {
       print('❌ Error approving user: $e');
       rethrow;

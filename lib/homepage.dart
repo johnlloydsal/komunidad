@@ -155,11 +155,11 @@ class _HomePageState extends State<HomePage> {
                       },
                     ),
 
-                    // Service Request
+                    // Service Request (includes borrowing supplies)
                     _buildServiceCard(
                       context,
                       icon: Icons.build,
-                      title: "Service Request",
+                      title: "Service Request & Borrow Supplies",
                       onTap: () {
                         Navigator.push(
                           context,

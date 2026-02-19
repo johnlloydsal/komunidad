@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import 'services/lost_and_found_service.dart';
 
 class LostAndFoundPage extends StatefulWidget {
@@ -131,9 +135,15 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
           ),
         ],
       ),
-      // Only show + button on Lost Items tab (index 0)
-      floatingActionButton: _tabController.index == 0
-          ? FloatingActionButton(
+      // Show + button based on tab and user role
+      floatingActionButton: FutureBuilder<bool>(
+        future: _checkIfAdmin(),
+        builder: (context, snapshot) {
+          final isAdmin = snapshot.data == true;
+          
+          // Lost Items tab (index 0) - all users can report
+          if (_tabController.index == 0) {
+            return FloatingActionButton(
               backgroundColor: const Color(0xFF4A00E0),
               onPressed: () {
                 Navigator.push(
@@ -144,8 +154,28 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
                 );
               },
               child: const Icon(Icons.add, color: Colors.white),
-            )
-          : null,
+            );
+          }
+          
+          // Found Items tab (index 1) - only admins can add
+          if (_tabController.index == 1 && isAdmin) {
+            return FloatingActionButton(
+              backgroundColor: const Color(0xFF1E3A8A),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddFoundItemPage(),
+                  ),
+                );
+              },
+              child: const Icon(Icons.add, color: Colors.white),
+            );
+          }
+          
+          return const SizedBox.shrink();
+        },
+      ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         unselectedItemColor: Colors.grey,
@@ -162,6 +192,15 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
   }
 
   Widget _buildItemCard(Map<String, dynamic> item, {required bool isLost}) {
+    final status = item['status'] ?? (isLost ? 'lost' : 'found');
+    final location = item['location'] ?? 'Unknown';
+    final imageUrl = item['imageUrl'] as String?;
+    
+    // Support both field naming conventions (app vs admin web)
+    final itemName = item['item'] ?? item['name'] ?? item['itemName'] ?? 'Unknown Item';
+    final description = item['notes'] ?? item['description'] ?? '';
+    final reporterName = item['name'] ?? item['reportedBy'] ?? item['userName'] ?? 'Anonymous';
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -181,19 +220,65 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    item['item'] ?? 'Unknown Item',
+                    itemName,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: status == 'lost'
+                        ? Colors.orange.shade100
+                        : status == 'found'
+                            ? Colors.green.shade100
+                            : Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: status == 'lost'
+                          ? Colors.orange.shade900
+                          : status == 'found'
+                              ? Colors.green.shade900
+                              : Colors.blue.shade900,
+                    ),
+                  ),
+                ),
               ],
             ),
-            if (item['notes'] != null &&
-                item['notes'].toString().isNotEmpty) ...[
+            if (!isLost && imageUrl != null) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  imageUrl,
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+            if (description.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(item['notes'], style: TextStyle(color: Colors.grey[600])),
+              Text(
+                description,
+                style: TextStyle(color: Colors.grey[700], fontSize: 14),
+              ),
             ],
             const SizedBox(height: 12),
             const Divider(),
@@ -203,7 +288,18 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
                 const Icon(Icons.person, size: 16, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(
-                  item['name'] ?? 'Anonymous',
+                  'Reported by: $reporterName',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  'Location: $location',
                   style: const TextStyle(fontSize: 14),
                 ),
               ],
@@ -219,10 +315,142 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
                 ],
               ),
             ],
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (isLost) _buildAdminActions(item),
+                if (isLost && item['id'] != null) const SizedBox(width: 8),
+                _buildDeleteButton(item['id'], isLost),
+              ],
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildAdminActions(Map<String, dynamic> item) {
+    return FutureBuilder<bool>(
+      future: _checkIfAdmin(),
+      builder: (context, snapshot) {
+        if (snapshot.data != true) return const SizedBox.shrink();
+        
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _updateLostItemStatus(item['id'], 'found'),
+              icon: const Icon(Icons.check_circle, size: 16),
+              label: const Text('Mark as Found', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.green,
+                side: const BorderSide(color: Colors.green),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool> _checkIfAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    
+    return userDoc.exists && (userDoc.data()?['isAdmin'] == true);
+  }
+
+  Future<void> _updateLostItemStatus(String itemId, String status) async {
+    try {
+      await _service.updateItemStatus(itemId, status, true);
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Item status updated successfully! ✅"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _buildDeleteButton(String? itemId, bool isLost) {
+    if (itemId == null) return const SizedBox.shrink();
+    
+    return IconButton(
+      onPressed: () => _confirmDeleteItem(itemId, isLost),
+      icon: const Icon(Icons.delete_outline),
+      color: Colors.red,
+      iconSize: 20,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+    );
+  }
+
+  void _confirmDeleteItem(String itemId, bool isLost) {
+    final itemType = isLost ? 'lost item' : 'found item';
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${isLost ? 'Lost' : 'Found'} Item'),
+        content: Text('Are you sure you want to delete this $itemType? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteItem(itemId, isLost);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteItem(String itemId, bool isLost) async {
+    try {
+      await _service.deleteItem(itemId, isLost);
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Item deleted successfully! ✅"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 
@@ -243,6 +471,17 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   bool _isSubmitting = false;
+  String? selectedLocation;
+
+  final List<String> zones = [
+    'Zone 1',
+    'Zone 2',
+    'Zone 3',
+    'Zone 4',
+    'Zone 5',
+    'Zone 6',
+    'Zone 7',
+  ];
 
   @override
   void initState() {
@@ -408,6 +647,36 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
                 validator: (value) =>
                     value!.isEmpty ? "Please enter your phone number" : null,
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: selectedLocation,
+                decoration: InputDecoration(
+                  labelText: "Location (Where was it lost?)",
+                  hintText: "Select zone",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF4A00E0)),
+                  ),
+                ),
+                items: zones.map((zone) {
+                  return DropdownMenuItem(value: zone, child: Text(zone));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedLocation = value;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? "Please select a location" : null,
+              ),
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
@@ -462,6 +731,7 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
+        location: selectedLocation!,
       );
 
       if (!mounted) return;
@@ -469,6 +739,321 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Lost item reported successfully! 🔍"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+}
+
+// Add Found Item Page (Admin Only)
+class AddFoundItemPage extends StatefulWidget {
+  const AddFoundItemPage({super.key});
+
+  @override
+  State<AddFoundItemPage> createState() => _AddFoundItemPageState();
+}
+
+class _AddFoundItemPageState extends State<AddFoundItemPage> {
+  final _formKey = GlobalKey<FormState>();
+  final LostAndFoundService _service = LostAndFoundService();
+  final TextEditingController _itemController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  bool _isSubmitting = false;
+  String? selectedLocation;
+  XFile? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+
+  final List<String> zones = [
+    'Zone 1',
+    'Zone 2',
+    'Zone 3',
+    'Zone 4',
+    'Zone 5',
+    'Zone 6',
+    'Zone 7',
+  ];
+
+  @override
+  void dispose() {
+    _itemController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _selectedImage = image;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error picking image: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<String?> _uploadImage() async {
+    if (_selectedImage == null) return null;
+
+    try {
+      final String fileName = 'found_items/${DateTime.now().millisecondsSinceEpoch}_${_selectedImage!.name}';
+      final Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      
+      final File file = File(_selectedImage!.path);
+      await ref.putFile(file);
+      
+      final String downloadUrl = await ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('❌ Error uploading image: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        centerTitle: true,
+        title: const Text(
+          "Add Found Item",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image picker
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: _selectedImage == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate, size: 60, color: Colors.grey[400]),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tap to add photo',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                            ),
+                          ],
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            File(_selectedImage!.path),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              TextFormField(
+                controller: _itemController,
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: "Item Name",
+                  hintText: "e.g., Phone, Wallet, Keys",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                  ),
+                ),
+                validator: (value) =>
+                    value!.isEmpty ? "Please enter item name" : null,
+              ),
+              const SizedBox(height: 16),
+              
+              TextFormField(
+                controller: _notesController,
+                maxLines: 3,
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: "Description / Notes",
+                  hintText: "Additional details about the item",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                  ),
+                ),
+                validator: (value) =>
+                    value!.isEmpty ? "Please enter description" : null,
+              ),
+              const SizedBox(height: 16),
+              
+              DropdownButtonFormField<String>(
+                initialValue: selectedLocation,
+                decoration: InputDecoration(
+                  labelText: "Location (Where was it found?)",
+                  hintText: "Select zone",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                  ),
+                ),
+                items: zones.map((zone) {
+                  return DropdownMenuItem(value: zone, child: Text(zone));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedLocation = value;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? "Please select a location" : null,
+              ),
+              const SizedBox(height: 30),
+              
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: _isSubmitting ? null : _submitFoundItem,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "Add Found Item",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitFoundItem() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Upload image if selected
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImage();
+      }
+
+      await _service.submitFoundItem(
+        item: _itemController.text.trim(),
+        notes: _notesController.text.trim(),
+        imageUrl: imageUrl,
+        location: selectedLocation,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Found item added successfully! ✅"),
           backgroundColor: Colors.green,
         ),
       );

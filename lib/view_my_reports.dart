@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'services/report_service.dart';
+import 'services/service_request_service.dart';
+import 'services/supplies_service.dart';
 
 class ViewMyReportsPage extends StatefulWidget {
   const ViewMyReportsPage({super.key});
@@ -12,11 +15,14 @@ class ViewMyReportsPage extends StatefulWidget {
 class _ViewMyReportsPageState extends State<ViewMyReportsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ReportService _reportService = ReportService();
+  final ServiceRequestService _serviceRequestService = ServiceRequestService();
+  final SuppliesService _suppliesService = SuppliesService();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -78,7 +84,8 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
           ),
           tabs: const [
             Tab(text: "Reports"),
-            Tab(text: "Service Requests"),
+            Tab(text: "Services"),
+            Tab(text: "Borrowed Items"),
           ],
         ),
       ),
@@ -89,6 +96,8 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
           _buildReportsList(),
           // Service Requests Tab
           _buildServiceRequestsList(),
+          // Borrowed Items Tab
+          _buildBorrowedItemsList(),
         ],
       ),
     );
@@ -227,6 +236,11 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
     final location = data['location'] ?? 'Unknown';
     final timestamp = data['createdAt'] as Timestamp?;
     final dateStr = _formatDate(timestamp);
+    final rating = data['rating'] as int?;
+    final feedbackComment = data['feedbackComment'] as String?;
+    final assignedToName = data['assignedToName'] as String?;
+    final isResolved = status.toLowerCase() == 'resolved' || status.toLowerCase() == 'completed';
+    final hasRating = rating != null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -263,6 +277,23 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
                 ),
               ],
             ),
+            if (assignedToName != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.person_outline, size: 16, color: Colors.blue),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Assigned to: $assignedToName',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
               description,
@@ -270,6 +301,64 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 14),
             ),
+            // Show rating if exists
+            if (hasRating) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'Your Rating: ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        ...List.generate(
+                          5,
+                          (index) => Icon(
+                            index < rating ? Icons.star : Icons.star_border,
+                            size: 16,
+                            color: Colors.amber,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '($rating/5)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (feedbackComment != null && feedbackComment.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          feedbackComment,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -278,9 +367,36 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
                   dateStr,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
-                TextButton(
-                  onPressed: () => _showReportDetails(data),
-                  child: const Text('View Details'),
+                Row(
+                  children: [
+                    if (isResolved && !hasRating)
+                      OutlinedButton.icon(
+                        onPressed: () => _showRatingDialog(docId, data),
+                        icon: const Icon(Icons.star_rate, size: 16),
+                        label: const Text('Rate', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.amber.shade700,
+                          side: BorderSide(color: Colors.amber.shade700),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                        ),
+                      ),
+                    if (isResolved && !hasRating) const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () => _showReportDetails(data),
+                      child: const Text('View Details'),
+                    ),
+                    IconButton(
+                      onPressed: () => _confirmDeleteReport(docId),
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red,
+                      iconSize: 20,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -338,9 +454,21 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
                   dateStr,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
-                TextButton(
-                  onPressed: () => _showServiceRequestDetails(data),
-                  child: const Text('View Details'),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => _showServiceRequestDetails(data),
+                      child: const Text('View Details'),
+                    ),
+                    IconButton(
+                      onPressed: () => _confirmDeleteServiceRequest(docId),
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red,
+                      iconSize: 20,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -397,6 +525,11 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
   }
 
   void _showReportDetails(Map<String, dynamic> data) {
+    final rating = data['rating'] as int?;
+    final feedbackComment = data['feedbackComment'] as String?;
+    final assignedToName = data['assignedToName'] as String?;
+    final solutionDescription = data['solutionDescription'] as String?;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -412,6 +545,54 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
               _buildDetailRow('Description', data['description']),
               if (data['userName'] != null)
                 _buildDetailRow('Submitted by', data['userName']),
+              if (assignedToName != null)
+                _buildDetailRow('Assigned to', assignedToName),
+              if (solutionDescription != null) ...[
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  'Solution:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  solutionDescription,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+              if (rating != null) ...[
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  'Your Feedback:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text('Rating: ', style: TextStyle(fontSize: 14)),
+                    ...List.generate(
+                      5,
+                      (index) => Icon(
+                        index < rating ? Icons.star : Icons.star_border,
+                        size: 18,
+                        color: Colors.amber,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text('($rating/5)', style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+                if (feedbackComment != null && feedbackComment.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Comment: $feedbackComment',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ],
             ],
           ),
         ),
@@ -454,6 +635,163 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
     );
   }
 
+  void _showRatingDialog(String reportId, Map<String, dynamic> reportData) {
+    int selectedRating = 0;
+    final TextEditingController feedbackController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          title: const Text(
+            'Rate Resolution',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'How satisfied are you with the resolution?',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  // Star Rating
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      final starIndex = index + 1;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedRating = starIndex;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            selectedRating >= starIndex
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: selectedRating >= starIndex
+                                ? Colors.amber
+                                : Colors.grey,
+                            size: 32,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    selectedRating > 0
+                        ? _getRatingText(selectedRating)
+                        : 'Tap a star to rate',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: selectedRating > 0
+                          ? const Color(0xFF1E3A8A)
+                          : Colors.grey,
+                      fontWeight: selectedRating > 0
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Feedback Comment
+                  TextField(
+                    controller: feedbackController,
+                    maxLines: 3,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      labelText: 'Feedback (Optional)',
+                      labelStyle: const TextStyle(fontSize: 12),
+                      hintText: 'Your thoughts...',
+                      hintStyle: const TextStyle(fontSize: 11),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.all(10),
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: selectedRating == 0
+                  ? null
+                  : () async {
+                      try {
+                        await _reportService.submitFeedbackRating(
+                          reportId: reportId,
+                          rating: selectedRating,
+                          feedbackComment: feedbackController.text.trim().isEmpty
+                              ? null
+                              : feedbackController.text.trim(),
+                        );
+
+                        if (!mounted) return;
+                        Navigator.pop(context);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Thank you for your feedback!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error submitting rating: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A8A),
+              ),
+              child: const Text('Submit Rating'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getRatingText(int rating) {
+    switch (rating) {
+      case 1:
+        return 'Very Poor';
+      case 2:
+        return 'Poor';
+      case 3:
+        return 'Fair';
+      case 4:
+        return 'Good';
+      case 5:
+        return 'Excellent';
+      default:
+        return '';
+    }
+  }
+
   Widget _buildDetailRow(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -469,5 +807,479 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
         ],
       ),
     );
+  }
+
+  // Delete confirmation for reports
+  void _confirmDeleteReport(String reportId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Report'),
+        content: const Text('Are you sure you want to delete this report? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteReport(reportId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteReport(String reportId) async {
+    try {
+      await _reportService.deleteReport(reportId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report deleted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting report: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Delete confirmation for service requests
+  void _confirmDeleteServiceRequest(String requestId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Service Request'),
+        content: const Text('Are you sure you want to delete this service request? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteServiceRequest(requestId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteServiceRequest(String requestId) async {
+    try {
+      await _serviceRequestService.deleteServiceRequest(requestId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Service request deleted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting service request: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Borrowed Items List
+  Widget _buildBorrowedItemsList() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _suppliesService.streamUserBorrowedSupplies(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No borrowed items',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Borrow supplies via Service Request',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final borrowedItems = snapshot.data!;
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: borrowedItems.length,
+          itemBuilder: (context, index) {
+            final item = borrowedItems[index];
+            return _buildBorrowedItemCard(item);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBorrowedItemCard(Map<String, dynamic> item) {
+    final supplyName = item['supplyName'] ?? 'Unknown Item';
+    final quantity = item['quantity'] ?? 0;
+    final status = item['status'] ?? 'pending';
+    final purpose = item['purpose'] ?? '';
+    final borrowedAt = (item['requestedAt'] ?? item['borrowedAt']) as Timestamp?;
+    final returnedAt = item['returnedAt'] as Timestamp?;
+    final isReturned = status == 'returned';
+    final isPending = status == 'pending';
+    final isRejected = status == 'rejected';
+    final isBorrowed = status == 'borrowed';
+    final rejectionReason = item['rejectionReason'] as String?;
+
+    // Status badge colors
+    Color badgeColor;
+    Color badgeTextColor;
+    String badgeText;
+    if (isPending) {
+      badgeColor = Colors.orange.shade100;
+      badgeTextColor = Colors.orange.shade900;
+      badgeText = 'PENDING';
+    } else if (isRejected) {
+      badgeColor = Colors.red.shade100;
+      badgeTextColor = Colors.red.shade900;
+      badgeText = 'REJECTED';
+    } else if (isReturned) {
+      badgeColor = Colors.green.shade100;
+      badgeTextColor = Colors.green.shade900;
+      badgeText = 'RETURNED';
+    } else {
+      badgeColor = Colors.blue.shade100;
+      badgeTextColor = Colors.blue.shade900;
+      badgeText = 'BORROWED';
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.inventory_2, color: Color(0xFF1E3A8A), size: 24),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          supplyName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: badgeTextColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (isPending) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.hourglass_top, size: 14, color: Colors.orange.shade700),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Waiting for admin approval',
+                        style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (isRejected && rejectionReason != null && rejectionReason.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: Colors.red.shade700),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Reason: $rejectionReason',
+                        style: TextStyle(fontSize: 12, color: Colors.red.shade800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.numbers, size: 16, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Quantity: ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        quantity.toString(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (purpose.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.description, size: 16, color: Colors.grey),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Purpose: ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            purpose,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        isPending ? 'Requested: ' : 'Borrowed: ',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Text(
+                        _formatDate(borrowedAt),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isReturned && returnedAt != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Returned: ',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        Text(
+                          _formatDate(returnedAt),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (isBorrowed) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _confirmReturnItem(item['id'], supplyName),
+                  icon: const Icon(Icons.assignment_return, size: 18),
+                  label: const Text('Mark as Returned'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmReturnItem(String borrowedId, String itemName) {
+    final feedbackController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Return Item'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Mark "$itemName" as returned?',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Please provide feedback about your borrowing experience:',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: feedbackController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Your feedback (optional)',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(12),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This will update the available quantity in the supplies inventory.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final feedback = feedbackController.text.trim();
+                Navigator.pop(context);
+                await _returnItem(borrowedId, feedback.isEmpty ? null : feedback);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Mark as Returned'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _returnItem(String borrowedId, String? feedback) async {
+    try {
+      await _suppliesService.returnSupply(borrowedId, feedback: feedback);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Item returned successfully! Thank you for your feedback.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error returning item: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

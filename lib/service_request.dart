@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/service_request_service.dart';
+import 'services/supplies_service.dart';
 
 class ServiceRequestPage extends StatefulWidget {
   const ServiceRequestPage({super.key});
@@ -11,11 +12,16 @@ class ServiceRequestPage extends StatefulWidget {
 
 class _ServiceRequestPageState extends State<ServiceRequestPage> {
   final ServiceRequestService _serviceRequestService = ServiceRequestService();
+  final SuppliesService _suppliesService = SuppliesService();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   String? selectedCategory;
   String? selectedLocation;
   bool _isSubmitting = false;
+  
+  // For funeral supplies (borrowing)
+  Map<String, int> funeralQuantities = {}; // supplyId -> quantity
+  List<Map<String, dynamic>> funeralSupplies = [];
 
   final List<String> categories = [
     'Funeral & Bereavement Assistance',
@@ -183,6 +189,12 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
               ),
               const SizedBox(height: 16),
 
+              // Show funeral supplies if Funeral & Bereavement Assistance is selected
+              if (selectedCategory == 'Funeral & Bereavement Assistance') ...[
+                _buildFuneralSuppliesList(),
+                const SizedBox(height: 16),
+              ],
+
               // Location Dropdown
               DropdownButtonFormField<String>(
                 initialValue: selectedLocation,
@@ -273,14 +285,52 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
       return;
     }
 
+
+
     setState(() {
       _isSubmitting = true;
     });
 
     try {
+      String finalDescription = descriptionController.text.trim();
+      
+      // If funeral assistance with supplies selected, borrow them and update description
+      if (selectedCategory == 'Funeral & Bereavement Assistance' && 
+          funeralQuantities.isNotEmpty && 
+          funeralQuantities.values.any((q) => q > 0)) {
+        
+        final requestedItems = <String>[];
+        for (var entry in funeralQuantities.entries) {
+          if (entry.value > 0) {
+            final supply = funeralSupplies.firstWhere(
+              (s) => s['id'] == entry.key,
+              orElse: () => {},
+            );
+            if (supply.isNotEmpty) {
+              // Get supply name with fallback
+              final supplyName = supply['name'] ?? supply['itemName'] ?? supply['item'] ?? 'Unknown';
+              
+              // Actually borrow the supply to sync with admin dashboard
+              await _suppliesService.borrowSupply(
+                supplyId: entry.key,
+                quantity: entry.value,
+                borrowerName: nameController.text.trim(),
+                purpose: 'Funeral & Bereavement Assistance: ${descriptionController.text.trim()}',
+              );
+              requestedItems.add('$supplyName: ${entry.value}');
+            }
+          }
+        }
+        
+        if (requestedItems.isNotEmpty) {
+          finalDescription += '\n\nBorrowed Funeral Supplies:\n${requestedItems.join('\n')}';
+        }
+      }
+
+      // Submit service request
       await _serviceRequestService.submitServiceRequest(
         name: nameController.text.trim(),
-        description: descriptionController.text.trim(),
+        description: finalDescription,
         category: selectedCategory!,
         location: selectedLocation!,
       );
@@ -299,6 +349,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
       setState(() {
         selectedCategory = null;
         selectedLocation = null;
+        funeralQuantities.clear();
       });
 
       // Navigate back after short delay
@@ -321,5 +372,303 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
         });
       }
     }
+  }
+
+  Widget _buildFuneralSuppliesList() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _suppliesService.streamSupplies(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'No funeral supplies available at the moment',
+              style: TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        funeralSupplies = snapshot.data!;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.inventory_2, color: Color(0xFF1E3A8A), size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'Borrow Funeral Assistance Supplies:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Select quantities to borrow (synced with admin)',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...funeralSupplies.map((supply) {
+              final supplyId = supply['id'] as String;
+              final supplyName = supply['name'] ?? supply['itemName'] ?? supply['item'] ?? 'Unknown';
+              final category = supply['category'] ?? '-';
+              final imageUrl = supply['imageUrl'] ?? supply['image'];
+              final availableQty = supply['availableQuantity'] ?? 0;
+              final totalQty = supply['quantity'] ?? 0;
+              final borrowedQty = totalQty - availableQty;
+              final status = availableQty > 0 ? 'Available' : 'Unavailable';
+              final currentQty = funeralQuantities[supplyId] ?? 0;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: currentQty > 0 ? const Color(0xFF1E3A8A) : Colors.grey[300]!,
+                    width: currentQty > 0 ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  color: currentQty > 0 ? Colors.blue.shade50 : Colors.white,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image
+                        Container(
+                          width: 60,
+                          height: 60,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: imageUrl != null && imageUrl.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(
+                                        Icons.inventory_2,
+                                        size: 30,
+                                        color: Colors.grey[600],
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.inventory_2,
+                                  size: 30,
+                                  color: Colors.grey[600],
+                                ),
+                        ),
+                        // Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Item Name
+                              Text(
+                                supplyName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              // Category
+                              Text(
+                                'Category: $category',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              // Quantities Row
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  _buildInfoChip('Total', totalQty.toString(), Colors.blue),
+                                  _buildInfoChip('Available', availableQty.toString(), Colors.green),
+                                  _buildInfoChip('Borrowed', borrowedQty.toString(), Colors.orange),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              // Status
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: availableQty > 0
+                                      ? Colors.green.shade100
+                                      : Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  status,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: availableQty > 0
+                                        ? Colors.green.shade900
+                                        : Colors.red.shade900,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (availableQty > 0) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Request Quantity:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              // Decrease button
+                              IconButton(
+                                onPressed: currentQty > 0
+                                    ? () {
+                                        setState(() {
+                                          funeralQuantities[supplyId] = currentQty - 1;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.remove_circle),
+                                color: Colors.red,
+                                iconSize: 30,
+                              ),
+                              // Quantity display
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E3A8A),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  currentQty.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              // Increase button
+                              IconButton(
+                                onPressed: currentQty < availableQty
+                                    ? () {
+                                        setState(() {
+                                          funeralQuantities[supplyId] = currentQty + 1;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.add_circle),
+                                color: Colors.green,
+                                iconSize: 30,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber, size: 16, color: Colors.orange.shade700),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Currently unavailable',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange.shade900,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 10,
+          color: Color.fromRGBO(
+            (color.red * 0.3).toInt(),
+            (color.green * 0.3).toInt(),
+            (color.blue * 0.3).toInt(),
+            1,
+          ),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }

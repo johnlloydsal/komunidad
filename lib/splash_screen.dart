@@ -69,7 +69,7 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2D3748),
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
         child: AnimatedBuilder(

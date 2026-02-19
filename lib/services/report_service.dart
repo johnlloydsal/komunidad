@@ -12,6 +12,8 @@ class ReportService {
     required String category,
     required String location,
     List<String>? mediaUrls,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -26,8 +28,13 @@ class ReportService {
         'description': description,
         'category': category,
         'location': location,
+        'latitude': latitude,
+        'longitude': longitude,
         'mediaUrls': mediaUrls ?? [],
         'status': 'pending', // pending, in-progress, resolved
+        'assignedTo': null, // Admin/handler assigned to this report
+        'assignedToName': null, // Name of assigned admin
+        'solutionDescription': null, // Description of how issue was resolved
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -88,6 +95,81 @@ class ReportService {
       });
     } catch (e) {
       print('❌ Error updating report status: $e');
+      rethrow;
+    }
+  }
+
+  // Assign handler to report (admin use)
+  Future<void> assignHandler({
+    required String reportId,
+    required String adminId,
+    required String adminName,
+  }) async {
+    try {
+      await _firestore.collection('reports').doc(reportId).update({
+        'assignedTo': adminId,
+        'assignedToName': adminName,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ Handler assigned to report');
+    } catch (e) {
+      print('❌ Error assigning handler: $e');
+      rethrow;
+    }
+  }
+
+  // Add solution description when resolving (admin use)
+  Future<void> resolveReportWithSolution({
+    required String reportId,
+    required String solutionDescription,
+  }) async {
+    try {
+      await _firestore.collection('reports').doc(reportId).update({
+        'status': 'resolved',
+        'solutionDescription': solutionDescription,
+        'resolvedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ Report resolved with solution');
+    } catch (e) {
+      print('❌ Error resolving report: $e');
+      rethrow;
+    }
+  }
+
+  // Submit feedback rating for resolved report
+  Future<void> submitFeedbackRating({
+    required String reportId,
+    required int rating,
+    String? feedbackComment,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      await _firestore.collection('reports').doc(reportId).update({
+        'rating': rating,
+        'feedbackComment': feedbackComment,
+        'ratedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Rating submitted successfully!');
+    } catch (e) {
+      print('❌ Error submitting rating: $e');
+      rethrow;
+    }
+  }
+
+  // Delete report
+  Future<void> deleteReport(String reportId) async {
+    try {
+      await _firestore.collection('reports').doc(reportId).delete();
+      print('✅ Report deleted successfully!');
+    } catch (e) {
+      print('❌ Error deleting report: $e');
       rethrow;
     }
   }

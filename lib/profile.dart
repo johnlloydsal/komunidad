@@ -7,6 +7,8 @@ import 'community_news.dart';
 import 'services/auth_service.dart';
 import 'services/user_service.dart';
 import 'admin_user_management.dart';
+import 'admin_supplies_management.dart';
+import 'admin_borrowed_supplies.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -289,7 +291,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           _buildProfileSection(
                             context: context,
                             userData: userData,
-                            icon: Icons.admin_panel_settings,
+                            icon: Icons.people_alt,
                             title: "User Management",
                             subtitle: "Approve or reject user registrations",
                             onTap: () {
@@ -298,6 +300,38 @@ class _ProfilePageState extends State<ProfilePage> {
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       const AdminUserManagementPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildProfileSection(
+                            context: context,
+                            userData: userData,
+                            icon: Icons.inventory,
+                            title: "Manage Supplies",
+                            subtitle: "Add, edit, and delete barangay supplies",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const AdminSuppliesManagementPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildProfileSection(
+                            context: context,
+                            userData: userData,
+                            icon: Icons.assignment_returned,
+                            title: "Borrowed Supplies",
+                            subtitle: "Track and manage borrowed items",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const AdminBorrowedSuppliesPage(),
                                 ),
                               );
                             },

@@ -98,4 +98,21 @@ class BarangayService {
       print('❌ Error initializing barangay info: $e');
     }
   }
+
+  // Stream barangay facilities from the barangay_facilities collection
+  Stream<List<Map<String, dynamic>>> streamBarangayFacilities() {
+    return _firestore
+        .collection('barangay_facilities')
+        .snapshots()
+        .map((snapshot) {
+          var facilities = snapshot.docs
+              .map((doc) => {...doc.data(), 'id': doc.id})
+              .toList();
+          // Sort by name
+          facilities.sort((a, b) => 
+            (a['name'] ?? '').toString().toLowerCase()
+            .compareTo((b['name'] ?? '').toString().toLowerCase()));
+          return facilities;
+        });
+  }
 }

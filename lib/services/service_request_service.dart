@@ -94,4 +94,15 @@ class ServiceRequestService {
       rethrow;
     }
   }
+
+  // Delete service request
+  Future<void> deleteServiceRequest(String requestId) async {
+    try {
+      await _firestore.collection('service_requests').doc(requestId).delete();
+      print('✅ Service request deleted successfully!');
+    } catch (e) {
+      print('❌ Error deleting service request: $e');
+      rethrow;
+    }
+  }
 }

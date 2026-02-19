@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'auth_wrapper.dart';
 import 'services/auth_service.dart';
 import 'widgets/app_logo.dart';
 
@@ -258,18 +259,21 @@ class _LoginPageState extends State<LoginPage> {
                                             "Login Successful! Welcome! 🎉",
                                           ),
                                           backgroundColor: Colors.green,
-                                          duration: Duration(seconds: 2),
+                                          duration: Duration(seconds: 1),
                                         ),
                                       );
 
-                                      // Pop back to AuthWrapper which will show HomePage
+                                      // Navigate to AuthWrapper which will handle routing based on account status
                                       await Future.delayed(
-                                        const Duration(milliseconds: 300),
+                                        const Duration(milliseconds: 500),
                                       );
                                       if (!mounted) return;
-                                      Navigator.of(
-                                        context,
-                                      ).popUntil((route) => route.isFirst);
+                                      Navigator.of(context).pushAndRemoveUntil(
+                                        MaterialPageRoute(
+                                          builder: (context) => const AuthWrapper(),
+                                        ),
+                                        (route) => false,
+                                      );
                                     } on FirebaseAuthException catch (e) {
                                       if (!mounted) return;
                                       print(
@@ -451,14 +455,19 @@ class _LoginPageState extends State<LoginPage> {
               "Welcome ${userCredential.user?.displayName ?? 'User'}! 🎉",
             ),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 1),
           ),
         );
 
-        // Pop back to AuthWrapper which will show HomePage
-        await Future.delayed(const Duration(milliseconds: 300));
+        // Navigate to AuthWrapper which will handle routing
+        await Future.delayed(const Duration(milliseconds: 500));
         if (!mounted) return;
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const AuthWrapper(),
+          ),
+          (route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {

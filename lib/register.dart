@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'auth_wrapper.dart';
 import 'login.dart';
 import 'services/user_service.dart';
 import 'widgets/app_logo.dart';
@@ -13,19 +17,46 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final UserService _userService = UserService();
-  final TextEditingController emailController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController submitIdController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
+  XFile? idImage;
   bool acceptedTerms = false;
   bool isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  Future<void> _pickIdImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          idImage = image;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error picking image: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +70,19 @@ class _RegisterPageState extends State<RegisterPage> {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Column(
               children: [
-                const SizedBox(height: 40),
+                // Back button
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16, top: 16),
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      tooltip: 'Back',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 // Logo at top
                 const AppLogo(size: 80, color: Colors.white),
                 const SizedBox(height: 40),
@@ -75,28 +118,6 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                         const SizedBox(height: 40),
-                        // Email Field
-                        TextField(
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          autocorrect: false,
-                          decoration: InputDecoration(
-                            hintText: "Email Address",
-                            hintStyle: TextStyle(color: Colors.grey[400]),
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            prefixIcon: Icon(
-                              Icons.email_outlined,
-                              color: Colors.grey[400],
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
                         // Username Field
                         TextField(
                           controller: usernameController,
@@ -181,6 +202,118 @@ class _RegisterPageState extends State<RegisterPage> {
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Submit ID Field
+                        TextField(
+                          controller: submitIdController,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            hintText: "Submit ID (for verification)",
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            prefixIcon: Icon(
+                              Icons.badge_outlined,
+                              color: Colors.grey[400],
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ID Picture Upload
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: idImage != null ? Colors.green : Colors.grey[300]!,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.camera_alt_outlined,
+                                    color: Colors.grey[600],
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      idImage != null
+                                          ? "ID Image Selected ✓"
+                                          : "Upload Barangay ID Picture *",
+                                      style: TextStyle(
+                                        color: idImage != null
+                                            ? Colors.green[700]
+                                            : Colors.grey[700],
+                                        fontSize: 14,
+                                        fontWeight: idImage != null
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: _pickIdImage,
+                                    icon: Icon(
+                                      idImage != null
+                                          ? Icons.edit
+                                          : Icons.add_photo_alternate,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      idImage != null ? 'Change' : 'Choose',
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1E3A8A),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (idImage != null) ...[
+                                const SizedBox(height: 12),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    File(idImage!.path),
+                                    height: 150,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                              Text(
+                                "Please upload a clear photo of your Barangay ID to verify your residency.",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[600],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -303,43 +436,33 @@ class _RegisterPageState extends State<RegisterPage> {
                                 : () async {
                                     // For web - also use window.console.log
                                     print('🔴 REGISTER BUTTON PRESSED!');
-                                    String email = emailController.text.trim();
-                                    String username = usernameController.text
-                                        .trim();
-                                    String firstName = firstNameController.text
-                                        .trim();
-                                    String lastName = lastNameController.text
-                                        .trim();
+                                    String username = usernameController.text.trim();
+                                    String firstName = firstNameController.text.trim();
+                                    String lastName = lastNameController.text.trim();
                                     String phone = phoneController.text.trim();
-                                    String password = passwordController.text
-                                        .trim();
-                                    String confirmPassword =
-                                        confirmPasswordController.text.trim();
+                                    String submitId = submitIdController.text.trim();
+                                    String password = passwordController.text.trim();
+                                    String confirmPassword = confirmPasswordController.text.trim();
 
-                                    print('🔴 Email: $email');
                                     print('🔴 Username: $username');
                                     print('🔴 Name: $firstName $lastName');
                                     print('🔴 Phone: $phone');
-                                    print(
-                                      '🔴 Password length: ${password.length}',
-                                    );
+                                    print('🔴 Submit ID: $submitId');
+                                    print('🔴 Has ID Image: ${idImage != null}');
+                                    print('🔴 Password length: ${password.length}');
                                     print('🔴 Terms accepted: $acceptedTerms');
 
                                     // Validation
-                                    if (email.isEmpty ||
-                                        username.isEmpty ||
+                                    if (username.isEmpty ||
                                         firstName.isEmpty ||
                                         lastName.isEmpty ||
                                         phone.isEmpty ||
+                                        submitId.isEmpty ||
                                         password.isEmpty ||
                                         confirmPassword.isEmpty) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                            "Please fill all fields!",
-                                          ),
+                                          content: Text("Please fill all fields!"),
                                           backgroundColor: Colors.red,
                                           duration: Duration(seconds: 2),
                                         ),
@@ -347,14 +470,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                       return;
                                     }
 
-                                    if (!email.contains('@')) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                    if (idImage == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                            "Please enter a valid email",
-                                          ),
+                                          content: Text("Please upload your Barangay ID picture"),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -395,10 +514,11 @@ class _RegisterPageState extends State<RegisterPage> {
                                     });
 
                                     try {
-                                      // Create account with Firebase (without Firestore yet)
-                                      print(
-                                        '🔵 Starting registration for: $email',
-                                      );
+                                      // Generate email from username
+                                      String email = '${username.toLowerCase()}@komunidad.app';
+                                      print('🔵 Starting registration for: $email');
+                                      
+                                      // Create account with Firebase
                                       final userCredential = await FirebaseAuth
                                           .instance
                                           .createUserWithEmailAndPassword(
@@ -408,27 +528,32 @@ class _RegisterPageState extends State<RegisterPage> {
 
                                       if (userCredential.user != null) {
                                         // Update display name
-                                        String displayName =
-                                            '$firstName $lastName';
-                                        print(
-                                          '🔵 Updating display name: $displayName',
-                                        );
-                                        await userCredential.user!
-                                            .updateDisplayName(displayName);
+                                        String displayName = '$firstName $lastName';
+                                        print('🔵 Updating display name: $displayName');
+                                        await userCredential.user!.updateDisplayName(displayName);
                                         await userCredential.user!.reload();
 
-                                        // Save ALL user data to Firestore in one call
-                                        print('🔵 Saving to Firestore...');
-                                        await _userService.updateUserProfile(
-                                          uid: userCredential.user!.uid,
-                                          displayName: displayName,
-                                          phoneNumber: phone,
-                                          username: username,
-                                          firstName: firstName,
-                                          lastName: lastName,
-                                        );
+                                        // Upload ID image to Firebase Storage
+                                        print('🔵 Uploading ID image...');
+                                        String? idImageUrl;
+                                        if (idImage != null) {
+                                          try {
+                                            final storageRef = FirebaseStorage.instance
+                                                .ref()
+                                                .child('user_ids')
+                                                .child('${userCredential.user!.uid}_id.jpg');
+                                            
+                                            await storageRef.putFile(File(idImage!.path));
+                                            idImageUrl = await storageRef.getDownloadURL();
+                                            print('✅ ID image uploaded: $idImageUrl');
+                                          } catch (e) {
+                                            print('❌ Error uploading ID image: $e');
+                                            // Continue even if image upload fails
+                                          }
+                                        }
 
-                                        // Also ensure basic profile exists
+                                        // Save ALL user data to Firestore
+                                        print('🔵 Saving to Firestore...');
                                         await _userService.createUserProfile(
                                           uid: userCredential.user!.uid,
                                           email: email,
@@ -437,7 +562,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                           firstName: firstName,
                                           lastName: lastName,
                                           phoneNumber: phone,
-                                          accountStatus: 'pending', // Set account status to pending
+                                          submitId: submitId,
+                                          idImageUrl: idImageUrl,
+                                          accountStatus: 'pending',
                                         );
                                         print('✅ Firestore save complete!');
 
@@ -451,21 +578,22 @@ class _RegisterPageState extends State<RegisterPage> {
                                               "Registration Successful! Awaiting admin approval.",
                                             ),
                                             backgroundColor: Colors.green,
-                                            duration: Duration(seconds: 3),
+                                            duration: Duration(seconds: 2),
                                           ),
                                         );
 
-                                        // AuthWrapper will automatically detect the user is logged in
-                                        // and route to pending approval page
+                                        // Navigate to AuthWrapper which will route to pending approval page
                                         await Future.delayed(
                                           const Duration(milliseconds: 500),
                                         );
                                         if (!mounted) return;
 
-                                        // Navigate to root (AuthWrapper will handle routing)
-                                        Navigator.of(
-                                          context,
-                                        ).popUntil((route) => route.isFirst);
+                                        Navigator.of(context).pushAndRemoveUntil(
+                                          MaterialPageRoute(
+                                            builder: (context) => const AuthWrapper(),
+                                          ),
+                                          (route) => false,
+                                        );
                                       }
                                     } on FirebaseAuthException catch (e) {
                                       print(
@@ -589,11 +717,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   void dispose() {
-    emailController.dispose();
     usernameController.dispose();
     firstNameController.dispose();
     lastNameController.dispose();
     phoneController.dispose();
+    submitIdController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();

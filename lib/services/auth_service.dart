@@ -39,12 +39,28 @@ class AuthService {
 
       // Save user data to Firestore
       if (userCredential.user != null) {
-        await _userService.createUserProfile(
-          uid: userCredential.user!.uid,
-          email: userCredential.user!.email!,
-          displayName: userCredential.user!.displayName,
-          photoUrl: userCredential.user!.photoURL,
-        );
+        // Check if user already exists
+        final userDoc = await _userService.getUserProfile(userCredential.user!.uid);
+        
+        if (userDoc == null) {
+          // New user - create profile with approved status (Google users are auto-approved)
+          print('🆕 New Google user, creating profile with approved status');
+          await _userService.createUserProfile(
+            uid: userCredential.user!.uid,
+            email: userCredential.user!.email!,
+            displayName: userCredential.user!.displayName,
+            photoUrl: userCredential.user!.photoURL,
+            accountStatus: 'approved', // Google users are automatically approved
+          );
+        } else {
+          // Existing user - just update their info without changing status
+          print('👤 Existing Google user, updating profile info');
+          await _userService.updateUserProfile(
+            uid: userCredential.user!.uid,
+            displayName: userCredential.user!.displayName,
+            photoUrl: userCredential.user!.photoURL,
+          );
+        }
       }
 
       return userCredential;
