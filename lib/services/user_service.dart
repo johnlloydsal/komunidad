@@ -13,6 +13,8 @@ class UserService {
     String? firstName,
     String? lastName,
     String? phoneNumber,
+    String? houseStreet,
+    String? zone,
     String? submitId,
     String? idImageUrl,
     String? accountStatus,
@@ -71,6 +73,12 @@ class UserService {
       if (finalFirstName != null) userData['firstName'] = finalFirstName;
       if (finalLastName != null) userData['lastName'] = finalLastName;
       if (phoneNumber != null) userData['phoneNumber'] = phoneNumber;
+      if (houseStreet != null) userData['houseStreet'] = houseStreet;
+      if (zone != null) userData['zone'] = zone;
+      if (houseStreet != null || zone != null) {
+        userData['address'] = [if (houseStreet != null) houseStreet, if (zone != null) zone]
+            .join(', ');
+      }
       if (submitId != null) userData['submitId'] = submitId;
       if (idImageUrl != null) userData['idImageUrl'] = idImageUrl;
       

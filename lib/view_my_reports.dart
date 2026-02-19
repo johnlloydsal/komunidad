@@ -239,7 +239,7 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
     final rating = data['rating'] as int?;
     final feedbackComment = data['feedbackComment'] as String?;
     final assignedToName = data['assignedToName'] as String?;
-    final isResolved = status.toLowerCase() == 'resolved' || status.toLowerCase() == 'completed';
+    final isResolved = status.toLowerCase() == 'resolved' || status.toLowerCase() == 'completed' || status.toLowerCase() == 'solved';
     final hasRating = rating != null;
 
     return Card(
@@ -361,42 +361,45 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
             ],
             const SizedBox(height: 12),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  dateStr,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                Flexible(
+                  child: Text(
+                    dateStr,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                Row(
-                  children: [
-                    if (isResolved && !hasRating)
-                      OutlinedButton.icon(
-                        onPressed: () => _showRatingDialog(docId, data),
-                        icon: const Icon(Icons.star_rate, size: 16),
-                        label: const Text('Rate', style: TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.amber.shade700,
-                          side: BorderSide(color: Colors.amber.shade700),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                        ),
+                const Spacer(),
+                if (isResolved && !hasRating) ...[  
+                  OutlinedButton.icon(
+                    onPressed: () => _showRatingDialog(docId, data),
+                    icon: const Icon(Icons.star_rate, size: 16),
+                    label: const Text('Rate', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.amber.shade700,
+                      side: BorderSide(color: Colors.amber.shade700),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                    if (isResolved && !hasRating) const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => _showReportDetails(data),
-                      child: const Text('View Details'),
                     ),
-                    IconButton(
-                      onPressed: () => _confirmDeleteReport(docId),
-                      icon: const Icon(Icons.delete_outline),
-                      color: Colors.red,
-                      iconSize: 20,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                TextButton(
+                  onPressed: () => _showReportDetails(data),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  child: const Text('View Details', style: TextStyle(fontSize: 12)),
+                ),
+                IconButton(
+                  onPressed: () => _confirmDeleteReport(docId),
+                  icon: const Icon(Icons.delete_outline),
+                  color: Colors.red,
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -448,27 +451,29 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
             ),
             const SizedBox(height: 12),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  dateStr,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                Flexible(
+                  child: Text(
+                    dateStr,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: () => _showServiceRequestDetails(data),
-                      child: const Text('View Details'),
-                    ),
-                    IconButton(
-                      onPressed: () => _confirmDeleteServiceRequest(docId),
-                      icon: const Icon(Icons.delete_outline),
-                      color: Colors.red,
-                      iconSize: 20,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
+                const Spacer(),
+                TextButton(
+                  onPressed: () => _showServiceRequestDetails(data),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  child: const Text('View Details', style: TextStyle(fontSize: 12)),
+                ),
+                IconButton(
+                  onPressed: () => _confirmDeleteServiceRequest(docId),
+                  icon: const Icon(Icons.delete_outline),
+                  color: Colors.red,
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -497,6 +502,7 @@ class _ViewMyReportsPageState extends State<ViewMyReportsPage>
         break;
       case 'resolved':
       case 'completed':
+      case 'solved':
         backgroundColor = Colors.green.shade50;
         textColor = Colors.green.shade700;
         displayText = 'Resolved';

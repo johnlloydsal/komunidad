@@ -22,6 +22,12 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController houseStreetController = TextEditingController();
+  String? selectedZone;
+  final List<String> zoneOptions = [
+    'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4',
+    'Zone 5', 'Zone 6', 'Zone 7', 'Zone 8',
+  ];
   final TextEditingController submitIdController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
@@ -203,6 +209,63 @@ class _RegisterPageState extends State<RegisterPage> {
                               borderSide: BorderSide.none,
                             ),
                           ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // House No. & Street Field
+                        TextField(
+                          controller: houseStreetController,
+                          textInputAction: TextInputAction.next,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: InputDecoration(
+                            hintText: "House No. & Street",
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            prefixIcon: Icon(
+                              Icons.home_outlined,
+                              color: Colors.grey[400],
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Zone / Purok Dropdown
+                        DropdownButtonFormField<String>(
+                          value: selectedZone,
+                          decoration: InputDecoration(
+                            hintText: "Select Zone / Purok",
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            prefixIcon: Icon(
+                              Icons.location_city_outlined,
+                              color: Colors.grey[400],
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                          ),
+                          items: zoneOptions
+                              .map((zone) => DropdownMenuItem(
+                                    value: zone,
+                                    child: Text(zone),
+                                  ))
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedZone = value;
+                            });
+                          },
                         ),
                         const SizedBox(height: 16),
 
@@ -440,6 +503,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     String firstName = firstNameController.text.trim();
                                     String lastName = lastNameController.text.trim();
                                     String phone = phoneController.text.trim();
+                                    String houseStreet = houseStreetController.text.trim();
                                     String submitId = submitIdController.text.trim();
                                     String password = passwordController.text.trim();
                                     String confirmPassword = confirmPasswordController.text.trim();
@@ -447,6 +511,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     print('🔴 Username: $username');
                                     print('🔴 Name: $firstName $lastName');
                                     print('🔴 Phone: $phone');
+                                    print('🔴 Address: $houseStreet, $selectedZone');
                                     print('🔴 Submit ID: $submitId');
                                     print('🔴 Has ID Image: ${idImage != null}');
                                     print('🔴 Password length: ${password.length}');
@@ -457,6 +522,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                         firstName.isEmpty ||
                                         lastName.isEmpty ||
                                         phone.isEmpty ||
+                                        houseStreet.isEmpty ||
+                                        selectedZone == null ||
                                         submitId.isEmpty ||
                                         password.isEmpty ||
                                         confirmPassword.isEmpty) {
@@ -562,6 +629,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                           firstName: firstName,
                                           lastName: lastName,
                                           phoneNumber: phone,
+                                          houseStreet: houseStreet,
+                                          zone: selectedZone,
                                           submitId: submitId,
                                           idImageUrl: idImageUrl,
                                           accountStatus: 'pending',
@@ -721,6 +790,7 @@ class _RegisterPageState extends State<RegisterPage> {
     firstNameController.dispose();
     lastNameController.dispose();
     phoneController.dispose();
+    houseStreetController.dispose();
     submitIdController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
