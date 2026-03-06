@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/service_request_service.dart';
 import 'services/supplies_service.dart';
+import 'theme/app_theme.dart';
 
 class ServiceRequestPage extends StatefulWidget {
   const ServiceRequestPage({super.key});
@@ -138,7 +139,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -164,7 +165,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -211,7 +212,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -237,7 +238,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: AppTheme.primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -293,11 +294,21 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
 
     try {
       String finalDescription = descriptionController.text.trim();
+      String? serviceRequestId;
+      List<String> borrowedItemIds = [];
       
-      // If funeral assistance with supplies selected, borrow them and update description
+      // If funeral assistance with supplies selected, create service request first then link borrowed items
       if (selectedCategory == 'Funeral & Bereavement Assistance' && 
           funeralQuantities.isNotEmpty && 
           funeralQuantities.values.any((q) => q > 0)) {
+        
+        // Submit service request first to get the ID
+        serviceRequestId = await _serviceRequestService.submitServiceRequest(
+          name: nameController.text.trim(),
+          description: finalDescription,
+          category: selectedCategory!,
+          location: selectedLocation!,
+        );
         
         final requestedItems = <String>[];
         for (var entry in funeralQuantities.entries) {
@@ -310,30 +321,38 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
               // Get supply name with fallback
               final supplyName = supply['name'] ?? supply['itemName'] ?? supply['item'] ?? 'Unknown';
               
-              // Actually borrow the supply to sync with admin dashboard
-              await _suppliesService.borrowSupply(
+              // Borrow the supply and link it to service request
+              final borrowId = await _suppliesService.borrowSupply(
                 supplyId: entry.key,
                 quantity: entry.value,
                 borrowerName: nameController.text.trim(),
                 purpose: 'Funeral & Bereavement Assistance: ${descriptionController.text.trim()}',
+                serviceRequestId: serviceRequestId,  // Link to service request
               );
+              borrowedItemIds.add(borrowId);
               requestedItems.add('$supplyName: ${entry.value}');
             }
           }
         }
         
+        // Update service request with borrowed items info
         if (requestedItems.isNotEmpty) {
           finalDescription += '\n\nBorrowed Funeral Supplies:\n${requestedItems.join('\n')}';
+          await _serviceRequestService.updateServiceRequestWithBorrowedItems(
+            serviceRequestId,
+            borrowedItemIds,
+            finalDescription,
+          );
         }
+      } else {
+        // Regular service request without borrowed items
+        serviceRequestId = await _serviceRequestService.submitServiceRequest(
+          name: nameController.text.trim(),
+          description: finalDescription,
+          category: selectedCategory!,
+          location: selectedLocation!,
+        );
       }
-
-      // Submit service request
-      await _serviceRequestService.submitServiceRequest(
-        name: nameController.text.trim(),
-        description: finalDescription,
-        category: selectedCategory!,
-        location: selectedLocation!,
-      );
 
       if (!mounted) return;
 
@@ -409,7 +428,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.inventory_2, color: Color(0xFF1E3A8A), size: 20),
+                const Icon(Icons.inventory_2, color: AppTheme.primaryColor, size: 20),
                 const SizedBox(width: 8),
                 const Text(
                   'Borrow Funeral Assistance Supplies:',
@@ -445,7 +464,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: currentQty > 0 ? const Color(0xFF1E3A8A) : Colors.grey[300]!,
+                    color: currentQty > 0 ? AppTheme.primaryColor : Colors.grey[300]!,
                     width: currentQty > 0 ? 2 : 1,
                   ),
                   borderRadius: BorderRadius.circular(12),
@@ -584,7 +603,7 @@ class _ServiceRequestPageState extends State<ServiceRequestPage> {
                                   vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1E3A8A),
+                                  color: AppTheme.primaryColor,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(

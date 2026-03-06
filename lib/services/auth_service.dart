@@ -39,26 +39,38 @@ class AuthService {
 
       // Save user data to Firestore
       if (userCredential.user != null) {
+        final user = userCredential.user!;
         // Check if user already exists
-        final userDoc = await _userService.getUserProfile(userCredential.user!.uid);
+        final userDoc = await _userService.getUserProfile(user.uid);
         
         if (userDoc == null) {
-          // New user - create profile with approved status (Google users are auto-approved)
-          print('🆕 New Google user, creating profile with approved status');
+          // New user - create profile with PENDING status (need ID verification)
+          print('\n🆕🆕🆕 NEW GOOGLE USER DETECTED 🆕🆕🆕');
+          print('UID: ${user.uid}');
+          print('Email: ${user.email}');
+          print('Creating profile with accountStatus=PENDING...');
+          
           await _userService.createUserProfile(
-            uid: userCredential.user!.uid,
-            email: userCredential.user!.email!,
-            displayName: userCredential.user!.displayName,
-            photoUrl: userCredential.user!.photoURL,
-            accountStatus: 'approved', // Google users are automatically approved
+            uid: user.uid,
+            email: user.email!,
+            displayName: user.displayName,
+            photoUrl: user.photoURL,
+            accountStatus: 'pending', // Google users start as PENDING - need ID submission + admin approval
           );
+          
+          print('✅ Profile created with PENDING status');
+          
+          // Set emailVerifiedInApp to true for Google users (no verification needed)
+          await _userService.setEmailVerificationStatus(user.uid, true);
+          print('✅ Google user email auto-verified');
+          print('🆕🆕🆕 NEW USER SETUP COMPLETE 🆕🆕🆕\n');
         } else {
           // Existing user - just update their info without changing status
           print('👤 Existing Google user, updating profile info');
           await _userService.updateUserProfile(
-            uid: userCredential.user!.uid,
-            displayName: userCredential.user!.displayName,
-            photoUrl: userCredential.user!.photoURL,
+            uid: user.uid,
+            displayName: user.displayName,
+            photoUrl: user.photoURL,
           );
         }
       }

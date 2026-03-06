@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'notification_service.dart';
 
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // Create or update user profile in Firestore
   Future<void> createUserProfile({
@@ -13,8 +15,9 @@ class UserService {
     String? firstName,
     String? lastName,
     String? phoneNumber,
-    String? houseStreet,
+    String? barangayAddress,
     String? zone,
+    String? idType,
     String? submitId,
     String? idImageUrl,
     String? accountStatus,
@@ -73,21 +76,26 @@ class UserService {
       if (finalFirstName != null) userData['firstName'] = finalFirstName;
       if (finalLastName != null) userData['lastName'] = finalLastName;
       if (phoneNumber != null) userData['phoneNumber'] = phoneNumber;
-      if (houseStreet != null) userData['houseStreet'] = houseStreet;
+      if (barangayAddress != null) userData['barangayAddress'] = barangayAddress;
       if (zone != null) userData['zone'] = zone;
-      if (houseStreet != null || zone != null) {
-        userData['address'] = [if (houseStreet != null) houseStreet, if (zone != null) zone]
+      if (barangayAddress != null || zone != null) {
+        userData['address'] = [if (barangayAddress != null) barangayAddress, if (zone != null) zone]
             .join(', ');
       }
+      if (idType != null) userData['idType'] = idType;
       if (submitId != null) userData['submitId'] = submitId;
       if (idImageUrl != null) userData['idImageUrl'] = idImageUrl;
       
-      // Only set accountStatus if provided (don't overwrite existing status)
+      // Only set accountStatus if provided (don't overwrite existing status for existing users)
       if (accountStatus != null) {
         userData['accountStatus'] = accountStatus;
+        userData['approvalStatus'] = accountStatus; // Set BOTH fields for compatibility
+        print('🔐 Setting accountStatus = "$accountStatus" AND approvalStatus = "$accountStatus"');
       } else if (existingData == null) {
         // Set default status only for new users
         userData['accountStatus'] = 'pending';
+        userData['approvalStatus'] = 'pending';
+        print('🔐 New user - setting BOTH status fields to "pending"');
       }
 
       await _firestore
@@ -96,12 +104,50 @@ class UserService {
           .set(userData, SetOptions(merge: true));
 
       print(
-        '✅ User profile created successfully with username: $finalUsername',
+        '✅ User profile created/updated successfully with username: $finalUsername',
       );
+      print('📄 Final userData being saved:');
+      print('   accountStatus: ${userData['accountStatus']}');
+      print('   approvalStatus: ${userData['approvalStatus']}');
     } catch (e) {
       print('❌ Error creating user profile: $e');
       rethrow;
     }
+  }
+
+  // Set email verification status in app
+  Future<void> setEmailVerificationStatus(String uid, bool isVerified) async {
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'emailVerifiedInApp': isVerified,
+        'emailVerifiedAt': isVerified ? FieldValue.serverTimestamp() : null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      print('✅ Email verification status set to $isVerified for $uid');
+    } catch (e) {
+      print('❌ Error setting email verification status: $e');
+      rethrow;
+    }
+  }
+
+  // Get email verification status
+  Future<bool> isEmailVerifiedInApp(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      return doc.data()?['emailVerifiedInApp'] ?? false;
+    } catch (e) {
+      print('❌ Error getting email verification status: $e');
+      return false;
+    }
+  }
+
+  // Stream email verification status
+  Stream<bool> streamEmailVerificationStatus(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((doc) => doc.data()?['emailVerifiedInApp'] ?? false);
   }
 
   // Generate unique username from email or displayName
@@ -176,7 +222,9 @@ class UserService {
     String? username,
     String? firstName,
     String? lastName,
+    String? idType,
     String? submitId,
+    String? idImageUrl,
   }) async {
     try {
       print('📝 Updating user profile for UID: $uid');
@@ -224,9 +272,17 @@ class UserService {
         updates['lastName'] = lastName;
         print('   - lastName: $lastName');
       }
+      if (idType != null) {
+        updates['idType'] = idType;
+        print('   - idType: $idType');
+      }
       if (submitId != null) {
         updates['submitId'] = submitId;
         print('   - submitId: $submitId');
+      }
+      if (idImageUrl != null) {
+        updates['idImageUrl'] = idImageUrl;
+        print('   - idImageUrl: $idImageUrl');
       }
 
       // Use set with merge to create document if it doesn't exist
@@ -323,7 +379,9 @@ class UserService {
       print('🔄 Approving user: $uid');
       await _firestore.collection('users').doc(uid).update({
         'accountStatus': 'approved',
+        'approvalStatus': 'approved',  // Also update for compatibility
         'approvedAt': FieldValue.serverTimestamp(),
+        'approvedBy': 'Admin',
         'updatedAt': FieldValue.serverTimestamp(),
       });
       print('✅ User $uid approved successfully');
@@ -331,9 +389,19 @@ class UserService {
       // Verify the update
       final doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
-        final status = doc.data()?['accountStatus'];
-        print('✔️ Verified status in Firestore: $status');
+        final accountStatus = doc.data()?['accountStatus'];
+        final approvalStatus = doc.data()?['approvalStatus'];
+        print('✔️ Verified status in Firestore - accountStatus: $accountStatus, approvalStatus: $approvalStatus');
       }
+      
+      // Send notification to user
+      await _notificationService.sendNotificationToUser(
+        userId: uid,
+        title: '✅ Account Approved!',
+        body: 'Your account has been approved by the admin. You now have full access to all features.',
+        type: 'approval',
+      );
+      print('📧 Approval notification sent to user $uid');
     } catch (e) {
       print('❌ Error approving user: $e');
       rethrow;
@@ -341,14 +409,33 @@ class UserService {
   }
 
   // Reject user (admin only)
-  Future<void> rejectUser(String uid) async {
+  Future<void> rejectUser(String uid, {String? rejectionReason}) async {
     try {
-      await _firestore.collection('users').doc(uid).update({
+      final updateData = {
         'accountStatus': 'rejected',
+        'approvalStatus': 'rejected',  // Also update for compatibility
         'rejectedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
-      print('✅ User $uid rejected successfully');
+      };
+      
+      // Add rejection reason if provided
+      if (rejectionReason != null && rejectionReason.isNotEmpty) {
+        updateData['rejectionReason'] = rejectionReason;
+      }
+      
+      await _firestore.collection('users').doc(uid).update(updateData);
+      print('✅ User $uid rejected successfully${rejectionReason != null ? ' with reason: $rejectionReason' : ''}');
+      
+      // Send notification to user
+      await _notificationService.sendNotificationToUser(
+        userId: uid,
+        title: '❌ Account Verification Rejected',
+        body: rejectionReason != null && rejectionReason.isNotEmpty
+            ? 'Your account verification was rejected. Reason: $rejectionReason'
+            : 'Your account verification was rejected. Please contact the admin for more information.',
+        type: 'approval',
+      );
+      print('📧 Rejection notification sent to user $uid');
     } catch (e) {
       print('❌ Error rejecting user: $e');
       rethrow;
@@ -428,6 +515,87 @@ class UserService {
       print('✅ User $uid and all their records deleted successfully');
     } catch (e) {
       print('❌ Error deleting user and records: $e');
+      rethrow;
+    }
+  }
+
+  // Set ID verification status
+  Future<void> setIdVerificationStatus(String uid, String status) async {
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'idVerificationStatus': status, // pending, approved, rejected
+        'idVerificationUpdatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      print('✅ ID verification status set to $status for $uid');
+    } catch (e) {
+      print('❌ Error setting ID verification status: $e');
+      rethrow;
+    }
+  }
+
+  // Set account status (for admin approval)
+  Future<void> setAccountStatus(String uid, String status) async {
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'accountStatus': status, // pending, approved, active, rejected
+        'approvalStatus': status, // Also update for compatibility
+        'accountStatusUpdatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      print('✅ Account status set to $status for $uid');
+    } catch (e) {
+      print('❌ Error setting account status: $e');
+      rethrow;
+    }
+  }
+
+  // Get ID verification status
+  Future<String> getIdVerificationStatus(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      return doc.data()?['idVerificationStatus'] ?? 'not_submitted';
+    } catch (e) {
+      print('❌ Error getting ID verification status: $e');
+      return 'not_submitted';
+    }
+  }
+
+  // Stream ID verification status
+  Stream<String> streamIdVerificationStatus(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((doc) => doc.data()?['idVerificationStatus'] ?? 'not_submitted');
+  }
+
+  // Approve ID verification (admin only)
+  Future<void> approveIdVerification(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'idVerificationStatus': 'approved',
+        'idVerificationUpdatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ ID verification approved for $uid');
+    } catch (e) {
+      print('❌ Error approving ID verification: $e');
+      rethrow;
+    }
+  }
+
+  // Reject ID verification (admin only)
+  Future<void> rejectIdVerification(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'idVerificationStatus': 'rejected',
+        'idVerificationUpdatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ ID verification rejected for $uid');
+    } catch (e) {
+      print('❌ Error rejecting ID verification: $e');
       rethrow;
     }
   }

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'notification_service.dart';
 
 class AnnouncementService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // Stream announcements from Firestore
   Stream<List<Announcement>> streamAnnouncements() {
@@ -51,13 +53,32 @@ class AnnouncementService {
   }) async {
     await _firestore.collection('announcements').add({
       'title': title,
-      'description': description,
+      'content': description,
       'category': category,
       'imageUrl': imageUrl,
       'source': source ?? 'Barangay Hall',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    
+    // Notify all approved users about new announcement
+    try {
+      final usersSnapshot = await _firestore
+          .collection('users')
+          .where('accountStatus', whereIn: ['approved', 'active'])
+          .get();
+      
+      for (var userDoc in usersSnapshot.docs) {
+        await _notificationService.sendNotificationToUser(
+          userId: userDoc.id,
+          title: '📢 New $category Announcement',
+          body: title,
+          type: 'news',
+        );
+      }
+    } catch (e) {
+      print('⚠️ Error sending announcement notifications: $e');
+    }
   }
 
   // Update announcement
@@ -73,7 +94,7 @@ class AnnouncementService {
     };
 
     if (title != null) updates['title'] = title;
-    if (description != null) updates['description'] = description;
+    if (description != null) updates['content'] = description;
     if (category != null) updates['category'] = category;
     if (imageUrl != null) updates['imageUrl'] = imageUrl;
 
@@ -116,7 +137,7 @@ class Announcement {
     return Announcement(
       id: doc.id,
       title: data['title'] ?? '',
-      description: data['description'] ?? '',
+      description: data['content'] ?? data['description'] ?? '',
       category: data['category'] ?? 'General',
       imageUrl: data['imageUrl'],
       source: data['source'] ?? 'Barangay Hall',
@@ -132,7 +153,7 @@ class Announcement {
   Map<String, dynamic> toMap() {
     return {
       'title': title,
-      'description': description,
+      'content': description,
       'category': category,
       'imageUrl': imageUrl,
       'source': source,

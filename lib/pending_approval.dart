@@ -284,59 +284,140 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
                 const AppLogo(size: 100, color: Colors.white),
                 const SizedBox(height: 40),
 
-                // Pending Icon
+                // Status Icon - changes based on status
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
+                    color: _currentStatus == 'rejected'
+                        ? Colors.red.withOpacity(0.2)
+                        : Colors.orange.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.hourglass_empty,
+                  child: Icon(
+                    _currentStatus == 'rejected'
+                        ? Icons.cancel
+                        : Icons.hourglass_empty,
                     size: 80,
-                    color: Colors.orange,
+                    color: _currentStatus == 'rejected'
+                        ? Colors.red
+                        : Colors.orange,
                   ),
                 ),
 
                 const SizedBox(height: 32),
 
-                // Title
-                const Text(
-                  'Account Pending Approval',
+                // Title - changes based on status
+                Text(
+                  _currentStatus == 'rejected'
+                      ? 'Account Rejected'
+                      : 'Account Pending Approval',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: _currentStatus == 'rejected'
+                        ? Colors.red[300]
+                        : Colors.white,
                   ),
                   textAlign: TextAlign.center,
                 ),
 
                 const SizedBox(height: 16),
 
-                // Description
+                // Description - changes based on status
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: _currentStatus == 'rejected'
+                        ? Colors.red.withOpacity(0.1)
+                        : Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
+                    border: _currentStatus == 'rejected'
+                        ? Border.all(color: Colors.red.withOpacity(0.3), width: 2)
+                        : null,
                   ),
                   child: Column(
                     children: [
-                      Text(
-                        'Thank you for registering!',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[300],
-                          fontWeight: FontWeight.w500,
+                      if (_currentStatus == 'rejected') ...[
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red[300],
+                          size: 48,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Your account is currently under review by an administrator. You will receive access once your account has been approved.',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-                        textAlign: TextAlign.center,
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Application Rejected',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.red[200],
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Unfortunately, your account registration has been rejected by the administrator.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 16,
+                                    color: Colors.red[200],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'What to do next:',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.red[200],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '• Contact the Barangay Hall for more information\n'
+                                '• Check if you submitted correct information\n'
+                                '• You may try registering again with valid credentials',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[300],
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        Text(
+                          'Thank you for registering!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[300],
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Your account is currently under review by an administrator. You will receive access once your account has been approved.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       if (user?.email != null)
                         Row(
@@ -413,57 +494,61 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
 
                 const SizedBox(height: 16),
 
-                // Info text
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.blue.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.blue[300],
-                        size: 20,
+                // Info text - only show for pending status
+                if (_currentStatus != 'rejected')
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.blue.withOpacity(0.3),
+                        width: 1,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'You will be automatically redirected when your account is approved',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[300],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue[300],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'You will be automatically redirected when your account is approved',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[300],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
                 const SizedBox(height: 24),
 
-                // Logout Button
+                // Logout Button with different text for rejected status
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: OutlinedButton.icon(
                     onPressed: _logout,
-                    icon: const Icon(Icons.logout),
-                    label: const Text(
-                      'Logout',
-                      style: TextStyle(
+                    icon: Icon(_currentStatus == 'rejected' ? Icons.arrow_back : Icons.logout),
+                    label: Text(
+                      _currentStatus == 'rejected' ? 'Back to Login' : 'Logout',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white, width: 2),
+                      foregroundColor: _currentStatus == 'rejected' ? Colors.red[300] : Colors.white,
+                      side: BorderSide(
+                        color: _currentStatus == 'rejected' ? Colors.red : Colors.white,
+                        width: 2,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

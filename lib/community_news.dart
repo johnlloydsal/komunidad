@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'homepage.dart';
 import 'profile.dart';
 import 'services/announcement_service.dart';
+import 'announcement_detail.dart';
+import 'theme/app_theme.dart';
 
 class CommunityNewsPage extends StatefulWidget {
   const CommunityNewsPage({super.key});
@@ -75,7 +77,7 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
             ),
           );
         }
@@ -136,74 +138,134 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
       itemCount: news.length,
       itemBuilder: (context, index) {
         final item = news[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image or placeholder
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                  image: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(item.imageUrl!),
-                          fit: BoxFit.cover,
-                        )
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AnnouncementDetailPage(
+                  announcement: item,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image or placeholder
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(8),
+                    image: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(item.imageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: item.imageUrl == null || item.imageUrl!.isEmpty
+                      ? Icon(Icons.article, color: Colors.grey[500], size: 35)
                       : null,
                 ),
-                child: item.imageUrl == null || item.imageUrl!.isEmpty
-                    ? Icon(Icons.article, color: Colors.grey[500], size: 30)
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Category badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getCategoryColor(item.category),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.category.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.source,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
+                      const SizedBox(height: 6),
+                      Text(
+                        item.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDate(item.createdAt),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey,
+                      const SizedBox(height: 4),
+                      Text(
+                        item.description,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 12, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(item.createdAt),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                Icon(Icons.chevron_right, color: Colors.grey[400]),
+              ],
+            ),
           ),
         );
       },
     );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'barangay':
+        return AppTheme.primaryColor;
+      case 'events':
+        return Colors.green;
+      case 'advisory':
+        return Colors.orange;
+      case 'security':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
@@ -239,8 +301,8 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
           child: TabBar(
             controller: _tabController,
             isScrollable: true,
-            indicatorColor: const Color(0xFF1E3A8A),
-            labelColor: const Color(0xFF1E3A8A),
+            indicatorColor: AppTheme.primaryColor,
+            labelColor: AppTheme.primaryColor,
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontWeight: FontWeight.bold),
             tabs: const [
@@ -267,7 +329,7 @@ class _CommunityNewsPageState extends State<CommunityNewsPage>
         currentIndex: _selectedIndex,
         backgroundColor: Colors.white,
         unselectedItemColor: Colors.grey,
-        selectedItemColor: const Color(0xFF1E3A8A),
+        selectedItemColor: AppTheme.primaryColor,
         type: BottomNavigationBarType.fixed,
         onTap: _onBottomNavTap,
         items: const [

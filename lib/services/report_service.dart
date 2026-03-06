@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'notification_service.dart';
 
 class ReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // Submit a new issue report
   Future<void> submitReport({
@@ -89,10 +91,32 @@ class ReportService {
   // Update report status (for admin use)
   Future<void> updateReportStatus(String reportId, String status) async {
     try {
+      // Get report data to find the user
+      final reportDoc = await _firestore.collection('reports').doc(reportId).get();
+      final reportData = reportDoc.data();
+      
       await _firestore.collection('reports').doc(reportId).update({
         'status': status,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      
+      // Send notification to user
+      if (reportData != null && reportData['userId'] != null) {
+        String notificationBody = 'Your report status has been updated to: $status';
+        if (status == 'in_progress') {
+          notificationBody = 'Your report is now being processed by the admin team.';
+        } else if (status == 'resolved') {
+          notificationBody = 'Good news! Your report has been resolved.';
+        }
+        
+        await _notificationService.sendNotificationToUser(
+          userId: reportData['userId'],
+          title: '📋 Report Status Updated',
+          body: notificationBody,
+          type: 'report',
+          actionId: reportId,
+        );
+      }
     } catch (e) {
       print('❌ Error updating report status: $e');
       rethrow;
@@ -124,6 +148,10 @@ class ReportService {
     required String solutionDescription,
   }) async {
     try {
+      // Get report data to find the user
+      final reportDoc = await _firestore.collection('reports').doc(reportId).get();
+      final reportData = reportDoc.data();
+      
       await _firestore.collection('reports').doc(reportId).update({
         'status': 'resolved',
         'solutionDescription': solutionDescription,
@@ -131,6 +159,17 @@ class ReportService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
       print('✅ Report resolved with solution');
+      
+      // Send notification to user
+      if (reportData != null && reportData['userId'] != null) {
+        await _notificationService.sendNotificationToUser(
+          userId: reportData['userId'],
+          title: '✅ Report Resolved!',
+          body: 'Your report has been resolved. Solution: $solutionDescription',
+          type: 'report',
+          actionId: reportId,
+        );
+      }
     } catch (e) {
       print('❌ Error resolving report: $e');
       rethrow;

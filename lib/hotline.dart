@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'theme/app_theme.dart';
 
 // 🔹 Main Hotline Page
 class HotlinePage extends StatelessWidget {
@@ -19,15 +21,16 @@ class HotlinePage extends StatelessWidget {
         ),
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _buildHotlineButton(
-              context,
-              "EMERGENCIES",
-              const EmergenciesPage(),
-            ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              _buildHotlineButton(
+                context,
+                "EMERGENCIES",
+                const EmergenciesPage(),
+              ),
             const SizedBox(height: 10),
             _buildHotlineButton(
               context,
@@ -57,6 +60,7 @@ class HotlinePage extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -65,7 +69,7 @@ class HotlinePage extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1E3A8A),
+          backgroundColor: AppTheme.primaryColor,
           padding: const EdgeInsets.symmetric(vertical: 15),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -92,41 +96,181 @@ class HotlinePage extends StatelessWidget {
 
 // 🔹 Reusable Hotline Card (Title + Number)
 Widget _buildHotlineCard(String title, String number) {
-  return Card(
-    color: Colors.grey[50],
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(15),
-      side: BorderSide(color: Colors.grey[300]!, width: 1),
-    ),
-    elevation: 1,
-    margin: const EdgeInsets.symmetric(vertical: 8),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1E3A8A),
-              ),
+  return Builder(
+    builder: (context) {
+      return Card(
+        color: Colors.grey[50],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+          side: BorderSide(color: Colors.grey[300]!, width: 1),
+        ),
+        elevation: 1,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: InkWell(
+          onTap: () => _handleCallTap(context, title, number),
+          borderRadius: BorderRadius.circular(15),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.phone, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              number,
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.call,
+                    color: AppTheme.primaryColor,
+                    size: 24,
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(
-            number,
-            style: GoogleFonts.robotoMono(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
+        ),
+      );
+    },
+  );
+}
+
+// 🔹 Handle Call Action
+void _handleCallTap(BuildContext context, String title, String numbers) {
+  // Split multiple numbers if separated by " / " or "/"
+  List<String> numberList = numbers
+      .split(RegExp(r'\s*/\s*'))
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
+  if (numberList.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No valid phone number found'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  // If only one number, call directly
+  if (numberList.length == 1) {
+    _makePhoneCall(context, numberList[0]);
+  } else {
+    // Multiple numbers, show selection dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Call $title',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: numberList.map((num) {
+            return ListTile(
+              leading: const Icon(Icons.phone, color: AppTheme.primaryColor),
+              title: Text(
+                num,
+                style: GoogleFonts.robotoMono(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              trailing: const Icon(Icons.call, color: AppTheme.primaryColor),
+              onTap: () {
+                Navigator.pop(context);
+                _makePhoneCall(context, num);
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
         ],
       ),
-    ),
+    );
+  }
+}
+
+// 🔹 Make Phone Call
+Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
+  // Remove any spaces, dashes, or special characters except +
+  final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+  
+  final Uri launchUri = Uri(
+    scheme: 'tel',
+    path: cleanNumber,
   );
+
+  try {
+    final bool launched = await launchUrl(
+      launchUri,
+      mode: LaunchMode.externalApplication,
+    );
+    
+    if (!launched) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot call $phoneNumber'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: Unable to open phone dialer'),
+        backgroundColor: Colors.red,
+        action: SnackBarAction(
+          label: 'Copy Number',
+          textColor: Colors.white,
+          onPressed: () {
+            // You could add clipboard functionality here if needed
+          },
+        ),
+      ),
+    );
+  }
 }
 
 // 📌 Emergencies Page

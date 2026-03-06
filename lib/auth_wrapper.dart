@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'FirsPage.dart';
+import 'login.dart';
 import 'homepage.dart';
 import 'pending_approval.dart';
 import 'services/user_service.dart';
@@ -41,7 +41,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           if (_hasTimeout) {
             // If timeout, show error and go to FirstPage
             print('⏱️ Auth check timeout, showing FirstPage');
-            return const FirstPage();
+            return const LoginPage();
           }
           return const Scaffold(
             body: Center(
@@ -60,7 +60,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Handle errors
         if (snapshot.hasError) {
           print('❌ Auth error: ${snapshot.error}');
-          return const FirstPage();
+          return const LoginPage();
         }
 
         // Debug: Print current auth state
@@ -73,7 +73,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
           final user = snapshot.data!;
           print('✅ User logged in: ${user.email}');
 
-          // Check account status with real-time updates
+          // Check if user is a Google user (bypasses admin approval)
+          final isGoogleUser = user.providerData.any(
+            (provider) => provider.providerId == 'google.com',
+          );
+
+          if (isGoogleUser) {
+            print('🌐 Google user detected - allowing homepage access');
+            
+            // For Google users, they can access homepage but features are restricted
+            // until admin approves them (accountStatus = 'approved')
+            return const HomePage();
+          }
+
+          // Non-Google users - check admin approval status
           return StreamBuilder<String>(
             stream: _userService.streamAccountStatus(user.uid),
             builder: (context, statusSnapshot) {
@@ -134,7 +147,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         // If not logged in, show FirstPage (landing page)
         print('❌ No user, showing FirstPage');
-        return const FirstPage();
+        return const LoginPage();
       },
     );
   }

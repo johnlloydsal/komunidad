@@ -4,6 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_wrapper.dart';
 import 'services/auth_service.dart';
 import 'widgets/app_logo.dart';
+import 'widgets/barangay_background.dart';
+import 'forgot_password.dart';
+import 'theme/app_theme.dart';
+import 'utils/page_transitions.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,46 +29,63 @@ class _LoginPageState extends State<LoginPage> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: const Color(0xFF2D3748),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: Column(
-              children: [
-                const SizedBox(height: 60),
-                // Logo at top
-                const AppLogo(size: 80, color: Colors.white),
-                const SizedBox(height: 60),
-                // Main content area
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
+        body: AnimatedBarangayBackground(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.primaryColor.withOpacity(0.95),
+                  AppTheme.primaryDark.withOpacity(0.9),
+                  AppTheme.accentRed.withOpacity(0.1),
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Column(
+                children: [
+                  const SizedBox(height: 60),
+                  // Logo at top
+                  const AppLogo(size: 90, color: Colors.white),
+                  const SizedBox(height: 60),
+                  // Main content area with glassmorphism
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(36),
+                        topRight: Radius.circular(36),
+                      ),
                     ),
-                  ),
-                  child: Padding(
+                    child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       children: [
                         const SizedBox(height: 40),
-                        // Login heading
-                        const Text(
-                          "Login",
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                        // Login heading with gradient
+                        ShaderMask(
+                          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                          child: const Text(
+                            "Login",
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 1,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Text(
                           "Making lives better",
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 14,
+                            fontSize: 15,
+                            letterSpacing: 0.3,
                           ),
                         ),
                         const SizedBox(height: 40),
@@ -79,14 +100,28 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: "Username",
                             hintStyle: TextStyle(color: Colors.grey[400]),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: AppTheme.primaryColor.withOpacity(0.03),
                             prefixIcon: Icon(
-                              Icons.person_outline,
-                              color: Colors.grey[400],
+                              Icons.person_outline_rounded,
+                              color: AppTheme.primaryColor.withOpacity(0.6),
                             ),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -102,17 +137,17 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: "Password",
                             hintStyle: TextStyle(color: Colors.grey[400]),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: AppTheme.primaryColor.withOpacity(0.03),
                             prefixIcon: Icon(
-                              Icons.lock_outline,
-                              color: Colors.grey[400],
+                              Icons.lock_outline_rounded,
+                              color: AppTheme.primaryColor.withOpacity(0.6),
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: Colors.grey[400],
+                                color: AppTheme.primaryColor.withOpacity(0.6),
                               ),
                               onPressed: () {
                                 setState(() {
@@ -121,8 +156,22 @@ class _LoginPageState extends State<LoginPage> {
                               },
                             ),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -132,37 +181,44 @@ class _LoginPageState extends State<LoginPage> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // TODO: Implement forgot password
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Forgot password feature coming soon!",
-                                  ),
-                                ),
-                              );
+                              context.pushWithFade(const ForgotPasswordPage());
                             },
                             child: Text(
                               "Forgot Password ?",
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: AppTheme.primaryColor,
                                 fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Login Button
+                        // Login Button with gradient
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: const Color(0xFF1E3A8A),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                              ),
                             onPressed: isLoading
                                 ? null
                                 : () async {
@@ -334,23 +390,25 @@ class _LoginPageState extends State<LoginPage> {
                                       }
                                     }
                                   },
-                            child: isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
+                              child: isLoading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                  : const Text(
+                                      "Login",
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                        letterSpacing: 0.5,
+                                      ),
                                     ),
-                                  )
-                                : const Text(
-                                    "Login",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -369,12 +427,15 @@ class _LoginPageState extends State<LoginPage> {
                               onTap: () {
                                 Navigator.pushNamed(context, '/register');
                               },
-                              child: const Text(
-                                "Signup",
-                                style: TextStyle(
-                                  color: Color(0xFF3B82F6),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                              child: ShaderMask(
+                                shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                                child: const Text(
+                                  "Signup",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
@@ -407,19 +468,26 @@ class _LoginPageState extends State<LoginPage> {
                             onTap: isLoading ? null : _handleGoogleSignIn,
                             borderRadius: BorderRadius.circular(30),
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Colors.grey[300]!,
-                                  width: 1,
+                                  color: AppTheme.primaryColor.withOpacity(0.2),
+                                  width: 1.5,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primaryColor.withOpacity(0.1),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
                               child: Image.asset(
                                 'assets/images/gagle.png',
-                                height: 24,
-                                width: 24,
+                                height: 26,
+                                width: 26,
                               ),
                             ),
                           ),
@@ -435,7 +503,9 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   // Google Sign-In Handler

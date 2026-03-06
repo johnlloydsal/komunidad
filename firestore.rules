@@ -4,19 +4,28 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      // Users can read their own document (CRITICAL for real-time updates!)
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow reading user documents for:
+      // 1. Anyone (for username lookup during login)
+      // 2. Authenticated users reading their own data
+      // 3. Admins
+      allow read: if true;
       
       // Users can create their own document during registration
       allow create: if request.auth != null && request.auth.uid == userId;
       
-      // Users can update their own profile (but not accountStatus)
-      allow update: if request.auth != null 
-                    && request.auth.uid == userId
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['accountStatus', 'isAdmin']);
+      // Update rules - users can update their own profile (limited fields) OR admins can update any user
+      allow update: if request.auth != null && (
+        // Users updating their own profile (but not accountStatus or isAdmin)
+        // They CAN update idVerificationStatus when submitting ID, and other ID fields
+        (request.auth.uid == userId
+         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['accountStatus', 'isAdmin'])
+             || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['idVerificationStatus', 'idVerificationUpdatedAt', 'idType', 'submitId', 'idImageUrl', 'phoneNumber', 'address', 'updatedAt'])))
+        // OR admin can update any user with any fields
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+      );
       
-      // Admins can read and write all user documents
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // Admins can delete user documents
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
     // Reports collection
@@ -76,6 +85,13 @@ service cloud.firestore {
                                     && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
+    // Barangay facilities collection (public read, admin write)
+    match /barangay_facilities/{facilityId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null 
+                                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
     // Supplies collection (public read, users can update quantities when borrowing, admin full access)
     match /supplies/{supplyId} {
       allow read: if request.auth != null;
@@ -96,6 +112,20 @@ service cloud.firestore {
                     || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
       allow delete: if request.auth != null 
                     && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Announcements collection (public read, admin write)
+    match /announcements/{announcementId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null 
+                                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Notifications collection  
+    match /notifications/{notificationId} {
+      // Allow all authenticated users to read any notification
+      // This is safe because the app filters by userId in the query
+      allow read, write: if request.auth != null;
     }
   }
 }

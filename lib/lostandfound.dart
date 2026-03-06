@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'services/lost_and_found_service.dart';
+import 'theme/app_theme.dart';
 
 class LostAndFoundPage extends StatefulWidget {
   const LostAndFoundPage({super.key});
@@ -64,9 +65,9 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
             color: Colors.white,
             child: TabBar(
               controller: _tabController,
-              indicatorColor: const Color(0xFF1E3A8A),
+              indicatorColor: AppTheme.primaryColor,
               indicatorWeight: 2,
-              labelColor: const Color(0xFF1E3A8A),
+              labelColor: AppTheme.primaryColor,
               unselectedLabelColor: Colors.grey,
               tabs: const [
                 Tab(text: "Lost Items"),
@@ -160,7 +161,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage>
           // Found Items tab (index 1) - only admins can add
           if (_tabController.index == 1 && isAdmin) {
             return FloatingActionButton(
-              backgroundColor: const Color(0xFF1E3A8A),
+              backgroundColor: AppTheme.primaryColor,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -556,7 +557,7 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
                   ),
                 ),
                 validator: (value) =>
@@ -650,6 +651,7 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: selectedLocation,
+                isExpanded: true,
                 decoration: InputDecoration(
                   labelText: "Location (Where was it lost?)",
                   hintText: "Select zone",
@@ -682,7 +684,7 @@ class _AddLostItemPageState extends State<AddLostItemPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: AppTheme.primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -924,7 +926,7 @@ class _AddFoundItemPageState extends State<AddFoundItemPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
                   ),
                 ),
                 validator: (value) =>
@@ -950,7 +952,7 @@ class _AddFoundItemPageState extends State<AddFoundItemPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
                   ),
                 ),
                 validator: (value) =>
@@ -960,6 +962,7 @@ class _AddFoundItemPageState extends State<AddFoundItemPage> {
               
               DropdownButtonFormField<String>(
                 initialValue: selectedLocation,
+                isExpanded: true,
                 decoration: InputDecoration(
                   labelText: "Location (Where was it found?)",
                   hintText: "Select zone",
@@ -973,7 +976,7 @@ class _AddFoundItemPageState extends State<AddFoundItemPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                    borderSide: const BorderSide(color: AppTheme.primaryColor),
                   ),
                 ),
                 items: zones.map((zone) {
@@ -993,7 +996,7 @@ class _AddFoundItemPageState extends State<AddFoundItemPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: AppTheme.primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

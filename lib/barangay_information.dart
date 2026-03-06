@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/barangay_service.dart';
+import 'theme/app_theme.dart';
 
 class BarangayInformationPage extends StatefulWidget {
   const BarangayInformationPage({super.key});
@@ -42,8 +43,8 @@ class _BarangayInformationPageState extends State<BarangayInformationPage> {
             ),
           ),
           bottom: const TabBar(
-            indicatorColor: Color(0xFF1E3A8A),
-            labelColor: Color(0xFF1E3A8A),
+            indicatorColor: AppTheme.primaryColor,
+            labelColor: AppTheme.primaryColor,
             unselectedLabelColor: Colors.grey,
             tabs: [
               Tab(text: "Barangay Officials"),
@@ -117,7 +118,7 @@ class _BarangayInformationPageState extends State<BarangayInformationPage> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E3A8A),
+                  color: AppTheme.primaryColor,
                 ),
               ),
               const SizedBox(height: 30),
@@ -202,7 +203,7 @@ class _BarangayInformationPageState extends State<BarangayInformationPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isCapitain ? const Color(0xFF1E3A8A) : Colors.grey[300]!,
+          color: isCapitain ? AppTheme.primaryColor : Colors.grey[300]!,
           width: isCapitain ? 2 : 1,
         ),
         boxShadow: [
@@ -265,7 +266,7 @@ class _BarangayInformationPageState extends State<BarangayInformationPage> {
                   data['position'] ?? '',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isCapitain ? const Color(0xFF1E3A8A) : Colors.blue[700],
+                    color: isCapitain ? AppTheme.primaryColor : Colors.blue[700],
                     fontWeight: isCapitain ? FontWeight.bold : FontWeight.normal,
                   ),
                   textAlign: TextAlign.center,
@@ -389,7 +390,7 @@ class _BarangayInformationPageState extends State<BarangayInformationPage> {
         children: [
           Row(
             children: [
-              Icon(icon, color: const Color(0xFF1E3A8A), size: 24),
+              Icon(icon, color: AppTheme.primaryColor, size: 24),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -449,7 +450,7 @@ class _BarangayInformationPageState extends State<BarangayInformationPage> {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E3A8A),
+                color: AppTheme.primaryColor,
               ),
             ),
           ),
@@ -482,50 +483,6 @@ class _BarangayInformationPageState extends State<BarangayInformationPage> {
         ],
       );
     }).toList();
-  }
-
-  List<Widget> _buildFacilitiesList(Map<String, dynamic> facilities) {
-    return facilities.entries.map((entry) {
-      final facility = entry.value as Map<String, dynamic>;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              facility['name'] ?? 'Facility',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E3A8A),
-              ),
-            ),
-            const SizedBox(height: 4),
-            if (facility['address'] != null)
-              _buildInfoRow(Icons.location_on, facility['address']),
-            if (facility['hours'] != null)
-              _buildInfoRow(Icons.access_time, facility['hours']),
-            if (facility['contact'] != null)
-              _buildInfoRow(Icons.phone, facility['contact']),
-            if (entry.key != facilities.keys.last) const Divider(height: 20),
-          ],
-        ),
-      );
-    }).toList();
-  }
-
-  Widget _buildContactInfo(Map<String, dynamic> contact) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (contact['phone'] != null)
-          _buildInfoRow(Icons.phone, contact['phone']),
-        if (contact['email'] != null)
-          _buildInfoRow(Icons.email, contact['email']),
-        if (contact['address'] != null)
-          _buildInfoRow(Icons.location_city, contact['address']),
-      ],
-    );
   }
 
   Widget _buildInfoRow(IconData icon, String text) {

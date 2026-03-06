@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'notification_service.dart';
 
 class BarangayService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // Get barangay information
   Stream<DocumentSnapshot> streamBarangayInfo() {
@@ -25,6 +27,25 @@ class BarangayService {
       }, SetOptions(merge: true));
 
       print('✅ Barangay info updated successfully!');
+      
+      // Notify all approved users about barangay info update
+      try {
+        final usersSnapshot = await _firestore
+            .collection('users')
+            .where('accountStatus', whereIn: ['approved', 'active'])
+            .get();
+        
+        for (var userDoc in usersSnapshot.docs) {
+          await _notificationService.sendNotificationToUser(
+            userId: userDoc.id,
+            title: '🏢 Barangay Information Updated',
+            body: 'Important information about the barangay has been updated. Check it out!',
+            type: 'barangay_info',
+          );
+        }
+      } catch (e) {
+        print('⚠️ Error sending barangay update notifications: $e');
+      }
     } catch (e) {
       print('❌ Error updating barangay info: $e');
       rethrow;

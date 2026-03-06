@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'notification_service.dart';
 
 class SuppliesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // Add a new supply item (admin only)
   Future<void> addSupply({
@@ -71,12 +73,13 @@ class SuppliesService {
   }
 
   // Borrow supplies
-  Future<void> borrowSupply({
+  Future<String> borrowSupply({
     required String supplyId,
     required int quantity,
     required String borrowerName,
     required String purpose,
     DateTime? returnDate,
+    String? serviceRequestId,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -101,7 +104,7 @@ class SuppliesService {
       final supplyName = supplyData['name'] ?? supplyData['itemName'] ?? supplyData['item'] ?? 'Unknown';
 
       // Create pending borrow request (admin must approve before qty is decremented)
-      await _firestore.collection('borrowed_supplies').add({
+      final borrowDoc = await _firestore.collection('borrowed_supplies').add({
         'supplyId': supplyId,
         'supplyName': supplyName,
         'userId': user.uid,
@@ -114,9 +117,11 @@ class SuppliesService {
         'returnDate': returnDate != null ? Timestamp.fromDate(returnDate) : null,
         'returnedAt': null,
         'status': 'pending', // pending, borrowed, returned, rejected
+        'serviceRequestId': serviceRequestId, // Link to service request if part of funeral assistance
       });
 
-      print('✅ Borrow request submitted (pending admin approval)!');
+      print('✅ Borrow request submitted (pending admin approval)! ID: ${borrowDoc.id}');
+      return borrowDoc.id;
     } catch (e) {
       print('❌ Error borrowing supply: $e');
       rethrow;
@@ -124,7 +129,7 @@ class SuppliesService {
   }
 
   // Approve a pending borrow request (admin only) — decrements qty
-  Future<void> approveBorrow(String borrowedId) async {
+  Future<void> approveBorrow(String borrowedId, {String? actionNotes}) async {
     try {
       final borrowedDoc = await _firestore.collection('borrowed_supplies').doc(borrowedId).get();
       if (!borrowedDoc.exists) throw Exception('Borrow record not found');
@@ -132,19 +137,26 @@ class SuppliesService {
       final borrowedData = borrowedDoc.data()!;
       final supplyId = borrowedData['supplyId'] as String;
       final quantity = borrowedData['quantity'] as int;
+      final userId = borrowedData['userId'] as String?;
 
       // Check available qty before decrementing
       final supplyDoc = await _firestore.collection('supplies').doc(supplyId).get();
       if (!supplyDoc.exists) throw Exception('Supply not found');
       final availableQty = supplyDoc.data()!['availableQuantity'] as int;
       if (availableQty < quantity) throw Exception('Not enough supplies available');
+      
+      final supplyName = supplyDoc.data()!['name'] as String? ?? 'Supply';
 
       // Approve: set status to borrowed and decrement qty
-      await _firestore.collection('borrowed_supplies').doc(borrowedId).update({
+      final updateData = <String, dynamic>{
         'status': 'borrowed',
         'approvedAt': FieldValue.serverTimestamp(),
         'borrowedAt': FieldValue.serverTimestamp(),
-      });
+      };
+      if (actionNotes != null && actionNotes.isNotEmpty) {
+        updateData['actionNotes'] = actionNotes;
+      }
+      await _firestore.collection('borrowed_supplies').doc(borrowedId).update(updateData);
 
       await _firestore.collection('supplies').doc(supplyId).update({
         'availableQuantity': availableQty - quantity,
@@ -152,6 +164,17 @@ class SuppliesService {
       });
 
       print('✅ Borrow request approved!');
+      
+      // Send notification to user
+      if (userId != null) {
+        await _notificationService.sendNotificationToUser(
+          userId: userId,
+          title: '✅ Borrow Request Approved',
+          body: 'Your request to borrow $quantity x $supplyName has been approved!',
+          type: 'supplies',
+          actionId: borrowedId,
+        );
+      }
     } catch (e) {
       print('❌ Error approving borrow: $e');
       rethrow;
@@ -161,6 +184,10 @@ class SuppliesService {
   // Reject a pending borrow request (admin only)
   Future<void> rejectBorrow(String borrowedId, {String? reason}) async {
     try {
+      // Get borrow data for notification
+      final borrowedDoc = await _firestore.collection('borrowed_supplies').doc(borrowedId).get();
+      final borrowedData = borrowedDoc.data();
+      
       final updateData = <String, dynamic>{
         'status': 'rejected',
         'rejectedAt': FieldValue.serverTimestamp(),
@@ -170,6 +197,29 @@ class SuppliesService {
       }
       await _firestore.collection('borrowed_supplies').doc(borrowedId).update(updateData);
       print('✅ Borrow request rejected!');
+      
+      // Send notification to user
+      if (borrowedData != null && borrowedData['userId'] != null) {
+        final supplyId = borrowedData['supplyId'] as String?;
+        String supplyName = 'supply';
+        
+        if (supplyId != null) {
+          final supplyDoc = await _firestore.collection('supplies').doc(supplyId).get();
+          if (supplyDoc.exists) {
+            supplyName = supplyDoc.data()!['name'] as String? ?? 'supply';
+          }
+        }
+        
+        await _notificationService.sendNotificationToUser(
+          userId: borrowedData['userId'],
+          title: '❌ Borrow Request Rejected',
+          body: reason != null && reason.isNotEmpty
+              ? 'Your request to borrow $supplyName was rejected. Reason: $reason'
+              : 'Your request to borrow $supplyName was rejected.',
+          type: 'supplies',
+          actionId: borrowedId,
+        );
+      }
     } catch (e) {
       print('❌ Error rejecting borrow: $e');
       rethrow;
@@ -286,4 +336,84 @@ class SuppliesService {
       rethrow;
     }
   }
+
+  // Delete borrowed item (user or admin)
+  Future<void> deleteBorrowedItem(String borrowedId) async {
+    try {
+      final borrowDoc = await _firestore.collection('borrowed_supplies').doc(borrowedId).get();
+      if (!borrowDoc.exists) throw Exception('Borrowed item not found');
+      
+      final borrowData = borrowDoc.data()!;
+      final userId = borrowData['userId'] as String?;
+      
+      await _firestore.collection('borrowed_supplies').doc(borrowedId).delete();
+      
+      // Send notification to user
+      if (userId != null) {
+        await _notificationService.sendNotificationToUser(
+          userId: userId,
+          title: '🗑️ Borrowed Item Deleted',
+          body: 'A borrowed item record has been removed.',
+          type: 'supplies',
+          actionId: borrowedId,
+        );
+      }
+      
+      print('✅ Borrowed item deleted successfully!');
+    } catch (e) {
+      print('❌ Error deleting borrowed item: $e');
+      rethrow;
+    }
+  }
+
+  // Synchronize borrowed supplies status when service request is actioned
+  // When admin marks service as "actioned" or "in-progress", auto-approve linked borrowed items
+  Future<void> syncBorrowedItemsWithServiceStatus(String serviceRequestId, String serviceStatus) async {
+    try {
+      // Find all borrowed items linked to this service request
+      final borrowedSnapshot = await _firestore
+          .collection('borrowed_supplies')
+          .where('serviceRequestId', isEqualTo: serviceRequestId)
+          .get();
+      
+      for (var doc in borrowedSnapshot.docs) {
+        final borrowData = doc.data();
+        final currentStatus = borrowData['status'];
+        
+        // When service is actioned/in-progress, approve pending borrowed items
+        if ((serviceStatus == 'actioned' || serviceStatus == 'in-progress') && currentStatus == 'pending') {
+          await approveBorrow(doc.id);
+          print('✅ Auto-approved borrowed item ${doc.id} linked to service request');
+        }
+      }
+    } catch (e) {
+      print('❌ Error syncing borrowed items: $e');
+      rethrow;
+    }
+  }
+
+  // Check if all borrowed items for a service request are returned
+  Future<bool> areAllItemsReturned(String serviceRequestId) async {
+    try {
+      final borrowedSnapshot = await _firestore
+          .collection('borrowed_supplies')
+          .where('serviceRequestId', isEqualTo: serviceRequestId)
+          .get();
+      
+      if (borrowedSnapshot.docs.isEmpty) return true;
+      
+      for (var doc in borrowedSnapshot.docs) {
+        final status = doc.data()['status'];
+        if (status != 'returned') {
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (e) {
+      print('❌ Error checking items return status: $e');
+      return false;
+    }
+  }
 }
+
